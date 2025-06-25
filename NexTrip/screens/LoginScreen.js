@@ -1,0 +1,251 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Platform,
+  KeyboardAvoidingView,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  MaterialCommunityIcons,
+  AntDesign,
+  FontAwesome,
+} from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+
+const { width } = Dimensions.get("window");
+
+export default function LoginScreen() {
+  const navigation = useNavigation();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = () => {
+    if (!form.email || !form.password) {
+      alert("Please enter email and password");
+      return;
+    }
+    alert("Login Successful!");
+    navigation.navigate("Home");
+  };
+
+  return (
+    <LinearGradient
+      colors={["#43cea2", "#185a9d"]}
+      start={[0, 0]}
+      end={[1, 1]}
+      style={styles.container}
+    >
+      <KeyboardAvoidingView
+        style={styles.avoiding}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.card}>
+          <Text style={styles.title}>NexTrip Login</Text>
+          <Text style={styles.subtitle}>Sign in to continue</Text>
+
+          {/* Social Login Row */}
+          <View style={styles.socialRow}>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => alert("Google login")}
+            >
+              <AntDesign name="google" size={24} color="#EA4335" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => alert("Facebook login not available")}
+            >
+              <FontAwesome name="facebook" size={24} color="#3b5998" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => alert("X login not available")}
+            >
+              <AntDesign name="twitter" size={24} color="#1da1f2" />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.orText}>— OR —</Text>
+
+          {/* Email Input */}
+          <TextInput
+            placeholder="Email"
+            style={styles.input}
+            placeholderTextColor="#888"
+            value={form.email}
+            onChangeText={(text) => setForm((f) => ({ ...f, email: text }))}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          {/* Password Input */}
+          <View style={{ width: "100%" }}>
+            <TextInput
+              placeholder="Password"
+              style={styles.input}
+              placeholderTextColor="#888"
+              value={form.password}
+              onChangeText={(text) =>
+                setForm((f) => ({ ...f, password: text }))
+              }
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword((p) => !p)}
+              style={styles.eyeIcon}
+            >
+              <MaterialCommunityIcons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={22}
+                color="#888"
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Sign In Button */}
+          <TouchableOpacity
+            style={[
+              styles.signInBtn,
+              !(form.email && form.password) && { opacity: 0.7 },
+            ]}
+            onPress={handleLogin}
+            disabled={!(form.email && form.password)}
+          >
+            <LinearGradient
+              colors={["#43cea2", "#185a9d"]}
+              start={[0, 0]}
+              end={[1, 0]}
+              style={styles.gradientBtn}
+            >
+              <Text style={styles.signInBtnText}>Sign In</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Sign Up Link */}
+          <View style={styles.signUpRow}>
+            <Text style={{ color: "#444", fontSize: 15 }}>New to NexTrip?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+              <Text style={styles.signUpLink}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+  },
+  avoiding: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    width: width > 400 ? 360 : "90%",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingVertical: 32,
+    paddingHorizontal: 22,
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#222",
+    shadowOpacity: 0.14,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#185a9d",
+    marginBottom: 3,
+    letterSpacing: 1,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#43cea2",
+    marginBottom: 22,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  socialRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  socialBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#f5f5f5",
+    borderWidth: 1,
+    borderColor: "#eee",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 7,
+    elevation: Platform.OS === "android" ? 2 : 0,
+  },
+  orText: {
+    color: "#888",
+    marginBottom: 10,
+    marginTop: 4,
+    fontSize: 16,
+    textAlign: "center",
+    letterSpacing: 1,
+  },
+  input: {
+    width: "100%",
+    height: 48,
+    backgroundColor: "#f6f6f6",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    color: "#222",
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 18,
+    top: 14,
+  },
+  signInBtn: {
+    width: "100%",
+    marginTop: 8,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  gradientBtn: {
+    paddingVertical: 13,
+    alignItems: "center",
+    borderRadius: 12,
+  },
+  signInBtnText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    letterSpacing: 1,
+  },
+  signUpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+  },
+  signUpLink: {
+    marginLeft: 7,
+    color: "#185a9d",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+});
