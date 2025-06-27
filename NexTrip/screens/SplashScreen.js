@@ -6,19 +6,26 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
+  SafeAreaView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useUser } from "../components/UserContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SplashScreen({ navigation }) {
+  const { user, loading } = useUser();
+
   useEffect(() => {
-    // Navigate to Login or Home after 2 seconds
-    const timer = setTimeout(() => {
-      navigation.replace("Profile"); // or "Home" if already logged in
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [navigation]);
+    if (!loading) {
+      // Add a small delay so splash screen is visible for at least 2 seconds
+      const timer = setTimeout(() => {
+        navigation.replace(user ? "Home" : "Login");
+      }, 2000); // 2000 ms = 2 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [loading, user, navigation]);
 
   return (
     <LinearGradient
@@ -27,22 +34,30 @@ export default function SplashScreen({ navigation }) {
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
-      <View style={styles.centerBox}>
-        <Image
-          source={require("../assets/logo12.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>NexTrip</Text>
-        <ActivityIndicator
-          size="large"
-          color="#fff"
-          style={{ marginTop: 20 }}
-        />
-      </View>
-      <Text style={styles.powered}>
-        Powered by Your Team © {new Date().getFullYear()}
-      </Text>
+      <SafeAreaView style={styles.safeArea}>
+        <View
+          style={styles.centerBox}
+          accessible
+          accessibilityLabel="App logo and loading indicator"
+        >
+          <Image
+            source={require("../assets/logo12.png")}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="NexTrip app logo"
+          />
+          <Text style={styles.title}>NexTrip</Text>
+          <ActivityIndicator
+            size="large"
+            color="#fff"
+            style={{ marginTop: 20 }}
+            accessibilityLabel="Loading indicator"
+          />
+        </View>
+        <Text style={styles.powered}>
+          Powered by Your Team © {new Date().getFullYear()}
+        </Text>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -54,6 +69,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width,
     height,
+  },
+  safeArea: {
+    flex: 1,
+    width: "100%",
   },
   centerBox: {
     flex: 1,

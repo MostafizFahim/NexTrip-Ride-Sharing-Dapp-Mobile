@@ -1,203 +1,239 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  MaterialCommunityIcons,
-  FontAwesome,
-  Feather,
-} from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
 
-export default function SelectRoleScreen() {
-  const navigation = useNavigation();
+export default function RegisterScreen({ navigation, route }) {
+  const initialRole = route.params?.role || "Passenger";
+
+  const [role, setRole] = useState(initialRole);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Save registration data locally (mock backend)
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      Alert.alert("Error", "Please fill all fields.");
+      return;
+    }
+
+    try {
+      // Simple user object
+      const userData = { name, email, role, password };
+
+      // Save user data to AsyncStorage (key: "userData")
+      await AsyncStorage.setItem("userData", JSON.stringify(userData));
+
+      Alert.alert(
+        "Success",
+        `Registered as ${role}!`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Navigate based on role
+              if (role === "Passenger") {
+                navigation.replace("PassengerDashboard");
+              } else if (role === "Driver") {
+                navigation.replace("DriverDashboard");
+              } else {
+                navigation.replace("Home");
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (err) {
+      Alert.alert("Error", "Failed to register user.");
+    }
+  };
 
   return (
     <LinearGradient
       colors={["#43cea2", "#185a9d"]}
+      style={styles.bg}
       start={[0, 0]}
       end={[1, 1]}
-      style={styles.bg}
     >
-      <View style={styles.container}>
-        <Text style={styles.title}>Get Started with NexTrip</Text>
-        <Text style={styles.subtitle}>Who are you?</Text>
-        <View style={styles.rolesRow}>
-          <TouchableOpacity
-            style={styles.roleCard}
-            activeOpacity={0.85}
-            onPress={() =>
-              navigation.navigate("Register", { role: "Passenger" })
-            }
-          >
-            <LinearGradient
-              colors={["#43cea2", "#5cc7b2"]}
-              style={styles.roleIconGradient}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <Text style={styles.title}>Register as {role}</Text>
+
+        {/* Role Selection */}
+        <View style={styles.roleRow}>
+          {["Passenger", "Driver"].map((r) => (
+            <TouchableOpacity
+              key={r}
+              style={[styles.roleBtn, role === r && styles.roleBtnSelected]}
+              onPress={() => setRole(r)}
             >
-              <MaterialCommunityIcons
-                name="account"
-                size={48}
-                color="#fff"
-                style={{ marginBottom: 2 }}
-              />
-            </LinearGradient>
-            <Text style={styles.roleName}>Passenger</Text>
-            <Text style={styles.roleDesc}>Book rides quickly</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.roleCard}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate("Register", { role: "Driver" })}
-          >
-            <LinearGradient
-              colors={["#185a9d", "#43cea2"]}
-              style={styles.roleIconGradient}
-            >
-              <FontAwesome
-                name="car"
-                size={43}
-                color="#fff"
-                style={{ marginBottom: 6 }}
-              />
-            </LinearGradient>
-            <Text style={styles.roleName}>Driver</Text>
-            <Text style={styles.roleDesc}>Earn by driving</Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.roleBtnText,
+                  role === r && styles.roleBtnTextSelected,
+                ]}
+              >
+                {r}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
+
+        {/* Name */}
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            placeholderTextColor="#b5c5c5"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            autoComplete="name"
+          />
+        </View>
+
+        {/* Email */}
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor="#b5c5c5"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
+        </View>
+
+        {/* Password */}
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#b5c5c5"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Register Button */}
+        <TouchableOpacity style={styles.registerBtn} onPress={handleRegister}>
+          <LinearGradient
+            colors={["#43cea2", "#185a9d"]}
+            style={styles.btnGradient}
+            start={[0, 0]}
+            end={[1, 0]}
+          >
+            <Text style={styles.registerBtnText}>Register</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Link to Login */}
         <TouchableOpacity
           style={styles.loginLink}
           onPress={() => navigation.navigate("Login")}
         >
-          <Text style={styles.loginLinkText}>
+          <Text style={styles.loginText}>
             Already have an account?{" "}
-            <Text style={{ color: "#43cea2" }}>Sign In</Text>
+            <Text style={{ color: "#43cea2", fontWeight: "bold" }}>Login</Text>
           </Text>
         </TouchableOpacity>
-
-        {/* Continue as Guest Option */}
-        <TouchableOpacity
-          style={styles.guestBtn}
-          onPress={() => navigation.replace("Home")} // or another guest-allowed screen
-        >
-          <Feather name="user" size={18} color="#185a9d" />
-          <Text style={styles.guestText}>Continue as Guest</Text>
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  bg: { flex: 1 },
   container: {
+    flex: 1,
+    paddingHorizontal: 25,
+    paddingTop: 50,
     alignItems: "center",
-    width: width > 400 ? 380 : "93%",
-    marginTop: 30,
-    backgroundColor: "rgba(255,255,255,0.98)",
-    borderRadius: 26,
-    paddingVertical: 34,
-    paddingHorizontal: 22,
-    shadowColor: "#185a9d",
-    shadowOpacity: 0.13,
-    shadowOffset: { width: 0, height: 9 },
-    elevation: 11,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#185a9d",
-    marginBottom: 10,
-    textAlign: "center",
-    letterSpacing: 1.3,
+    color: "#fff",
+    marginBottom: 25,
+    letterSpacing: 1,
   },
-  subtitle: {
-    fontSize: 17,
+  roleRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  roleBtn: {
+    borderWidth: 1.7,
+    borderColor: "#43cea2",
+    paddingVertical: 9,
+    paddingHorizontal: 20,
+    marginHorizontal: 8,
+    borderRadius: 14,
+  },
+  roleBtnSelected: {
+    backgroundColor: "#43cea2",
+  },
+  roleBtnText: {
     color: "#43cea2",
     fontWeight: "600",
-    marginBottom: 26,
-    textAlign: "center",
-    letterSpacing: 0.7,
+    fontSize: 15,
   },
-  rolesRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 30,
-    width: "100%",
+  roleBtnTextSelected: {
+    color: "#fff",
   },
-  roleCard: {
-    flex: 1,
+  inputRow: {
+    width: width > 400 ? 360 : "95%",
     backgroundColor: "#fff",
-    borderRadius: 17,
-    marginHorizontal: 8,
-    paddingVertical: 25,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    elevation: 4,
-    shadowColor: "#43cea2",
-    shadowOpacity: 0.09,
-    shadowOffset: { width: 0, height: 4 },
-    minWidth: 120,
+    borderRadius: 12,
+    marginBottom: 18,
   },
-  roleIconGradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 7,
+  input: {
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: "#222",
   },
-  roleName: {
-    fontSize: 19,
+  registerBtn: {
+    width: width > 400 ? 360 : "95%",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginTop: 10,
+  },
+  btnGradient: {
+    paddingVertical: 15,
+    alignItems: "center",
+    borderRadius: 16,
+  },
+  registerBtnText: {
+    color: "#fff",
     fontWeight: "bold",
-    color: "#185a9d",
-    marginTop: 6,
-    marginBottom: 2,
-  },
-  roleDesc: {
-    fontSize: 13,
-    color: "#888",
-    marginBottom: 0,
-    textAlign: "center",
+    fontSize: 18,
+    letterSpacing: 1,
   },
   loginLink: {
-    marginTop: 18,
+    marginTop: 22,
   },
-  loginLinkText: {
-    color: "#185a9d",
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  guestBtn: {
-    marginTop: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "center",
-    backgroundColor: "#e6f7f4",
-    borderRadius: 11,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    shadowColor: "#185a9d",
-    shadowOpacity: 0.07,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  guestText: {
-    color: "#185a9d",
-    fontWeight: "700",
-    marginLeft: 8,
+  loginText: {
+    color: "#fff",
     fontSize: 15,
   },
 });

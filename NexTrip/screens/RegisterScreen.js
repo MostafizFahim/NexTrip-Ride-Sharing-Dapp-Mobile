@@ -10,17 +10,17 @@ import {
   Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  MaterialCommunityIcons,
-  AntDesign,
-  FontAwesome,
-} from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useUser } from "../components/UserContext";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
 
 const { width } = Dimensions.get("window");
 
 export default function RegisterScreen() {
   const navigation = useNavigation();
+  const { login, loading: userLoading } = useUser();
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -30,19 +30,33 @@ export default function RegisterScreen() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
+    setError("");
     if (!form.name || !form.email || !form.password || !form.confirmPassword) {
-      alert("Please fill in all fields!");
+      setError("Please fill in all fields!");
       return;
     }
     if (form.password !== form.confirmPassword) {
-      alert("Passwords do not match!");
+      setError("Passwords do not match!");
       return;
     }
-    // Registration logic goes here
-    alert("Registration successful!");
-    navigation.navigate("Login");
+    setLoading(true);
+    try {
+      await login({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        role: form.role.toLowerCase(),
+        photo: null,
+      });
+      setLoading(false);
+      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+    } catch (e) {
+      setLoading(false);
+      setError("Registration failed. Please try again.");
+    }
   };
 
   return (
@@ -65,46 +79,39 @@ export default function RegisterScreen() {
             />
           </View>
           <Text style={styles.title}>Create Account</Text>
+
+          {/* Role switch */}
           <View style={styles.roleSwitch}>
-            <TouchableOpacity
-              style={[
-                styles.roleBtn,
-                form.role === "Passenger" && styles.roleBtnActive,
-              ]}
-              onPress={() => setForm((f) => ({ ...f, role: "Passenger" }))}
-            >
-              <Text
+            {["Passenger", "Driver"].map((roleName) => (
+              <TouchableOpacity
+                key={roleName}
                 style={[
-                  styles.roleBtnText,
-                  form.role === "Passenger" && styles.roleBtnTextActive,
+                  styles.roleBtn,
+                  form.role === roleName && styles.roleBtnActive,
                 ]}
+                onPress={() => setForm((f) => ({ ...f, role: roleName }))}
+                disabled={loading || userLoading}
               >
-                Passenger
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.roleBtn,
-                form.role === "Driver" && styles.roleBtnActive,
-              ]}
-              onPress={() => setForm((f) => ({ ...f, role: "Driver" }))}
-            >
-              <Text
-                style={[
-                  styles.roleBtnText,
-                  form.role === "Driver" && styles.roleBtnTextActive,
-                ]}
-              >
-                Driver
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.roleBtnText,
+                    form.role === roleName && styles.roleBtnTextActive,
+                  ]}
+                >
+                  {roleName}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
+
+          {/* Inputs */}
           <TextInput
             placeholder="Full Name"
             style={styles.input}
             placeholderTextColor="#888"
             value={form.name}
             onChangeText={(text) => setForm((f) => ({ ...f, name: text }))}
+            editable={!loading && !userLoading}
           />
           <TextInput
             placeholder="Email"
@@ -114,6 +121,7 @@ export default function RegisterScreen() {
             onChangeText={(text) => setForm((f) => ({ ...f, email: text }))}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!loading && !userLoading}
           />
           <View style={{ width: "100%", position: "relative" }}>
             <TextInput
@@ -125,10 +133,12 @@ export default function RegisterScreen() {
                 setForm((f) => ({ ...f, password: text }))
               }
               secureTextEntry={!showPassword}
+              editable={!loading && !userLoading}
             />
             <TouchableOpacity
               style={styles.eyeIcon}
               onPress={() => setShowPassword((v) => !v)}
+              activeOpacity={0.7}
             >
               <MaterialCommunityIcons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -147,10 +157,12 @@ export default function RegisterScreen() {
                 setForm((f) => ({ ...f, confirmPassword: text }))
               }
               secureTextEntry={!showConfirmPassword}
+              editable={!loading && !userLoading}
             />
             <TouchableOpacity
               style={styles.eyeIcon}
               onPress={() => setShowConfirmPassword((v) => !v)}
+              activeOpacity={0.7}
             >
               <MaterialCommunityIcons
                 name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
@@ -159,6 +171,11 @@ export default function RegisterScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          {/* Error message */}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {/* Sign Up button */}
           <TouchableOpacity
             style={[
               styles.registerBtn,
@@ -176,8 +193,11 @@ export default function RegisterScreen() {
                 form.email &&
                 form.password &&
                 form.confirmPassword
-              )
+              ) ||
+              loading ||
+              userLoading
             }
+            activeOpacity={0.9}
           >
             <LinearGradient
               colors={["#43cea2", "#185a9d"]}
@@ -185,13 +205,24 @@ export default function RegisterScreen() {
               end={[1, 0]}
               style={styles.gradientBtn}
             >
-              <Text style={styles.registerBtnText}>Sign Up</Text>
+              {loading || userLoading ? (
+                <LoadingSpinner
+                  visible
+                  overlay={false}
+                  color="#fff"
+                  size={18}
+                  message="Signing up..."
+                  textStyle={{ color: "#fff", marginLeft: 6 }}
+                />
+              ) : (
+                <Text style={styles.registerBtnText}>Sign Up</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
+
+          {/* Sign In link */}
           <View style={styles.signInRow}>
-            <Text style={{ color: "#666", fontSize: 15 }}>
-              Already have an account?
-            </Text>
+            <Text style={styles.signInText}>Already have an account?</Text>
             <TouchableOpacity onPress={() => navigation.navigate("Login")}>
               <Text style={styles.signInLink}>Sign In</Text>
             </TouchableOpacity>
@@ -273,6 +304,12 @@ const styles = StyleSheet.create({
     top: 14,
     zIndex: 1,
   },
+  errorText: {
+    color: "#c62828",
+    marginBottom: 8,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   registerBtn: {
     width: "100%",
     marginTop: 6,
@@ -295,6 +332,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 17,
     justifyContent: "center",
+  },
+  signInText: {
+    color: "#666",
+    fontSize: 15,
   },
   signInLink: {
     marginLeft: 8,

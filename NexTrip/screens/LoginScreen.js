@@ -16,21 +16,56 @@ import {
   FontAwesome,
 } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useUser } from "../components/UserContext";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
 
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const navigation = useNavigation();
+  const { login, loading: userLoading } = useUser();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    setError("");
     if (!form.email || !form.password) {
-      alert("Please enter email and password");
+      setError("Please enter email and password");
       return;
     }
-    alert("Login Successful!");
-    navigation.navigate("Home");
+    setLoading(true);
+
+    // DEMO LOGIN: Accept only certain domains; replace with backend call later
+    if (
+      form.email.endsWith("@admin.com") ||
+      form.email.endsWith("@driver.com") ||
+      form.email.endsWith("@user.com")
+    ) {
+      const role = form.email.endsWith("@admin.com")
+        ? "admin"
+        : form.email.endsWith("@driver.com")
+        ? "driver"
+        : "passenger";
+
+      try {
+        await login({
+          name: form.email.split("@")[0].replace(/^\w/, (c) => c.toUpperCase()),
+          email: form.email,
+          role,
+          photo: null,
+        });
+        setLoading(false);
+        navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      } catch (e) {
+        setLoading(false);
+        setError("Login failed. Please try again.");
+      }
+    } else {
+      setLoading(false);
+      setError("Invalid credentials. Try demo@user.com or demo@driver.com.");
+    }
   };
 
   return (
@@ -52,19 +87,19 @@ export default function LoginScreen() {
           <View style={styles.socialRow}>
             <TouchableOpacity
               style={styles.socialBtn}
-              onPress={() => alert("Google login")}
+              onPress={() => alert("Google login coming soon!")}
             >
               <AntDesign name="google" size={24} color="#EA4335" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialBtn}
-              onPress={() => alert("Facebook login not available")}
+              onPress={() => alert("Facebook login coming soon!")}
             >
               <FontAwesome name="facebook" size={24} color="#3b5998" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialBtn}
-              onPress={() => alert("X login not available")}
+              onPress={() => alert("X login coming soon!")}
             >
               <AntDesign name="twitter" size={24} color="#1da1f2" />
             </TouchableOpacity>
@@ -81,6 +116,7 @@ export default function LoginScreen() {
             onChangeText={(text) => setForm((f) => ({ ...f, email: text }))}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!loading && !userLoading}
           />
 
           {/* Password Input */}
@@ -94,10 +130,12 @@ export default function LoginScreen() {
                 setForm((f) => ({ ...f, password: text }))
               }
               secureTextEntry={!showPassword}
+              editable={!loading && !userLoading}
             />
             <TouchableOpacity
               onPress={() => setShowPassword((p) => !p)}
               style={styles.eyeIcon}
+              activeOpacity={0.7}
             >
               <MaterialCommunityIcons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
@@ -107,6 +145,9 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Error Message */}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           {/* Sign In Button */}
           <TouchableOpacity
             style={[
@@ -114,7 +155,8 @@ export default function LoginScreen() {
               !(form.email && form.password) && { opacity: 0.7 },
             ]}
             onPress={handleLogin}
-            disabled={!(form.email && form.password)}
+            disabled={!(form.email && form.password) || loading || userLoading}
+            activeOpacity={0.9}
           >
             <LinearGradient
               colors={["#43cea2", "#185a9d"]}
@@ -122,13 +164,24 @@ export default function LoginScreen() {
               end={[1, 0]}
               style={styles.gradientBtn}
             >
-              <Text style={styles.signInBtnText}>Sign In</Text>
+              {loading || userLoading ? (
+                <LoadingSpinner
+                  visible
+                  overlay={false}
+                  color="#fff"
+                  size={18}
+                  message="Signing in..."
+                  textStyle={{ color: "#fff", marginLeft: 6 }}
+                />
+              ) : (
+                <Text style={styles.signInBtnText}>Sign In</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
           {/* Sign Up Link */}
           <View style={styles.signUpRow}>
-            <Text style={{ color: "#444", fontSize: 15 }}>New to NexTrip?</Text>
+            <Text style={styles.signUpText}>New to NexTrip?</Text>
             <TouchableOpacity onPress={() => navigation.navigate("Register")}>
               <Text style={styles.signUpLink}>Sign Up</Text>
             </TouchableOpacity>
@@ -220,6 +273,12 @@ const styles = StyleSheet.create({
     right: 18,
     top: 14,
   },
+  errorText: {
+    color: "#c62828",
+    marginBottom: 10,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   signInBtn: {
     width: "100%",
     marginTop: 8,
@@ -241,6 +300,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 16,
+  },
+  signUpText: {
+    color: "#444",
+    fontSize: 15,
   },
   signUpLink: {
     marginLeft: 7,

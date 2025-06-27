@@ -17,6 +17,10 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 
+import { useUser } from "../components/UserContext";
+import useRideHistory from "../components/hooks/useRideHistory";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
+
 const { width } = Dimensions.get("window");
 
 const rideTypes = [
@@ -26,25 +30,53 @@ const rideTypes = [
 ];
 
 export default function BookRideScreen({ navigation }) {
+  const { user } = useUser();
+  const { add: addRide, loading } = useRideHistory();
+
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [rideType, setRideType] = useState("Bike");
+  const [submitting, setSubmitting] = useState(false);
 
-  // Swap pickup/dropoff locations
   const swapLocations = () => {
     setPickup(dropoff);
     setDropoff(pickup);
   };
 
-  // Handle booking ride (add logic as needed)
-  const handleBook = () => {
-    if (!pickup || !dropoff) {
+  const handleBook = async () => {
+    if (!pickup.trim() || !dropoff.trim()) {
       alert("Please enter both pickup and drop-off locations.");
       return;
     }
-    // TODO: Save ride details, call API, etc.
-    alert(`Ride booked!\nType: ${rideType}\nFrom: ${pickup}\nTo: ${dropoff}`);
-    navigation.navigate("RideInProgress"); // or another screen
+    setSubmitting(true);
+
+    // Optionally calculate fare (add logic as needed)
+    const baseFare = rideType === "Bike" ? 60 : rideType === "Car" ? 140 : 80;
+    const randomExtra = Math.floor(Math.random() * 100);
+    const fare = baseFare + randomExtra;
+
+    // Create ride object
+    const ride = {
+      pickup,
+      dropoff,
+      rideType,
+      status: "Searching", // or "Booked"
+      fare,
+      date: new Date().toISOString().slice(0, 10),
+      time: new Date().toLocaleTimeString(),
+      user: user?.name || "You",
+    };
+
+    // Save to local ride history
+    await addRide(ride);
+
+    setSubmitting(false);
+    setPickup("");
+    setDropoff("");
+    setRideType("Bike");
+
+    // Optionally navigate to a searching/progress screen
+    navigation.navigate("SearchingForDriver", { ride });
   };
 
   return (
@@ -63,7 +95,6 @@ export default function BookRideScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.title}>Book a Ride</Text>
-          {/* Input fields */}
           <View style={styles.inputGroup}>
             <View style={styles.inputRow}>
               <MaterialCommunityIcons
@@ -77,6 +108,7 @@ export default function BookRideScreen({ navigation }) {
                 placeholderTextColor="#888"
                 value={pickup}
                 onChangeText={setPickup}
+                editable={!submitting}
               />
             </View>
             <TouchableOpacity style={styles.swapBtn} onPress={swapLocations}>
@@ -94,10 +126,11 @@ export default function BookRideScreen({ navigation }) {
                 placeholderTextColor="#888"
                 value={dropoff}
                 onChangeText={setDropoff}
+                editable={!submitting}
               />
             </View>
           </View>
-          {/* Ride Type Selection */}
+
           <Text style={styles.sectionTitle}>Select Ride Type</Text>
           <View style={styles.rideTypeRow}>
             {rideTypes.map((type) => (
@@ -109,6 +142,7 @@ export default function BookRideScreen({ navigation }) {
                 ]}
                 onPress={() => setRideType(type.label)}
                 activeOpacity={0.8}
+                disabled={submitting}
               >
                 <MaterialCommunityIcons
                   name={type.icon}
@@ -126,16 +160,33 @@ export default function BookRideScreen({ navigation }) {
               </TouchableOpacity>
             ))}
           </View>
-          {/* Book Button */}
-          <TouchableOpacity style={styles.bookBtn} onPress={handleBook}>
+
+          <TouchableOpacity
+            style={styles.bookBtn}
+            onPress={handleBook}
+            disabled={submitting || loading}
+          >
             <LinearGradient
               colors={["#43cea2", "#185a9d"]}
               start={[0, 0]}
               end={[1, 0]}
               style={styles.bookGradient}
             >
-              <FontAwesome name="check-circle" size={22} color="#fff" />
-              <Text style={styles.bookText}>Book Ride</Text>
+              {submitting ? (
+                <LoadingSpinner
+                  visible
+                  message="Booking..."
+                  overlay={false}
+                  color="#fff"
+                  size={22}
+                  textStyle={{ color: "#fff", marginLeft: 6 }}
+                />
+              ) : (
+                <>
+                  <FontAwesome name="check-circle" size={22} color="#fff" />
+                  <Text style={styles.bookText}>Book Ride</Text>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>

@@ -18,19 +18,24 @@ import {
   Feather,
 } from "@expo/vector-icons";
 
+import { useUser } from "../components/UserContext";
+import useRideHistory from "../components/hooks/useRideHistory";
+import GradientButton from "../components/ui/GradientButton";
+import Avatar from "../components/ui/Avatar";
+import SectionTitle from "../components/ui/SectionTitle";
+import LoadingSpinner from "../components/ui/LoadingSpinner";
+import EmptyState from "../components/ui/EmptyState";
+import RideCard from "../components/cards/RideCard"; // You can use this for recent rides
+import FeatureCard from "../components/cards/FeatureCard";
+import StoreButton from "../components/ui/StoreButton";
+
 const windowDimensions = Dimensions.get("window");
 const { width, height } = windowDimensions;
 
-const rideSummary = {
-  pickup: "Bashundhara R/A",
-  dropoff: "Dhanmondi 27",
-  status: "Completed",
-  fare: 320,
-  date: "2025-06-25",
-};
-
 export default function HomeScreen({ navigation }) {
-  const user = null; // Replace with user context or auth hook
+  const { user } = useUser();
+  const { rides, loading } = useRideHistory();
+  const lastRide = rides && rides.length ? rides[0] : null;
 
   return (
     <View style={styles.container}>
@@ -56,7 +61,11 @@ export default function HomeScreen({ navigation }) {
                 onPress={() => navigation.navigate("Profile")}
                 activeOpacity={0.7}
               >
-                <Feather name="user" size={26} color="#fff" />
+                {user?.photo ? (
+                  <Avatar source={user.photo} size={36} />
+                ) : (
+                  <Feather name="user" size={26} color="#fff" />
+                )}
               </TouchableOpacity>
             </View>
             <Text style={styles.greeting}>
@@ -75,56 +84,66 @@ export default function HomeScreen({ navigation }) {
         {/* Main Card */}
         <View style={styles.mainCard}>
           {user ? (
-            <View style={styles.rideSummary}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>Your Last Ride</Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("History")}
-                  activeOpacity={0.7}
+            loading ? (
+              <LoadingSpinner message="Loading your rides..." overlay={false} />
+            ) : lastRide ? (
+              <View>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Your Last Ride</Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("RideHistory")}
+                  >
+                    <Text style={styles.viewAll}>View All</Text>
+                  </TouchableOpacity>
+                </View>
+                <RideCard
+                  {...lastRide}
+                  showAvatar={false}
+                  onPress={() =>
+                    navigation.navigate("RideDetails", { ride: lastRide })
+                  }
                 >
-                  <Text style={styles.viewAll}>View All</Text>
-                </TouchableOpacity>
-              </View>
-
-              <RideDetail
-                icon={
-                  <MaterialIcons name="my-location" size={22} color="#43cea2" />
-                }
-                label="Pickup"
-                value={rideSummary.pickup}
-              />
-              <RideDetail
-                icon={
-                  <MaterialCommunityIcons
-                    name="map-marker"
-                    size={22}
-                    color="#185a9d"
+                  <GradientButton
+                    title="Book Again"
+                    onPress={() => navigation.navigate("BookRide")}
+                    style={{ marginTop: 12 }}
+                    icon={
+                      <MaterialIcons name="search" size={20} color="#fff" />
+                    }
                   />
-                }
-                label="Dropoff"
-                value={rideSummary.dropoff}
-              />
-              <RideDetail
-                icon={<FontAwesome name="money" size={20} color="#00c853" />}
-                label="Fare"
-                value={`৳${rideSummary.fare}`}
-              />
-              <RideDetail
-                icon={<MaterialIcons name="history" size={20} color="#888" />}
-                label="Status"
-                value={rideSummary.status}
-                valueStyle={styles.completedStatus}
-              />
-
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => navigation.navigate("BookRide")}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="search" size={24} color="#fff" />
-                <Text style={styles.primaryButtonText}>Book Again</Text>
-              </TouchableOpacity>
-            </View>
+                </RideCard>
+              </View>
+            ) : (
+              <View style={styles.welcomeCard}>
+                <Text style={styles.welcomeTitle}>Book a ride anywhere</Text>
+                <Text style={styles.welcomeSubtitle}>
+                  Fast, secure, affordable & always nearby
+                </Text>
+                <GradientButton
+                  title="Book a Ride"
+                  onPress={() => navigation.navigate("BookRide")}
+                  icon={<MaterialIcons name="search" size={22} color="#fff" />}
+                />
+                <GradientButton
+                  title="Become a Driver"
+                  style={{
+                    marginTop: 12,
+                    backgroundColor: "#fff",
+                    borderWidth: 1.2,
+                    borderColor: "#43cea2",
+                  }}
+                  textStyle={{ color: "#43cea2" }}
+                  icon={
+                    <MaterialCommunityIcons
+                      name="car-sports"
+                      size={19}
+                      color="#43cea2"
+                    />
+                  }
+                  onPress={() => navigation.navigate("Register")}
+                />
+              </View>
+            )
           ) : (
             <View style={styles.welcomeCard}>
               <Text style={styles.welcomeTitle}>
@@ -133,33 +152,36 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.welcomeSubtitle}>
                 Fast, secure, affordable & always nearby
               </Text>
-              <TouchableOpacity
-                style={styles.primaryButton}
+              <GradientButton
+                title="Book a Ride"
                 onPress={() => navigation.navigate("BookRide")}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="search" size={24} color="#fff" />
-                <Text style={styles.primaryButtonText}>Book a Ride</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => navigation.navigate("RegisterDriver")}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name="car-sports"
-                  size={21}
-                  color="#43cea2"
-                />
-                <Text style={styles.secondaryButtonText}>Become a Driver</Text>
-              </TouchableOpacity>
+                icon={<MaterialIcons name="search" size={22} color="#fff" />}
+              />
+              <GradientButton
+                title="Become a Driver"
+                style={{
+                  marginTop: 12,
+                  backgroundColor: "#fff",
+                  borderWidth: 1.2,
+                  borderColor: "#43cea2",
+                }}
+                textStyle={{ color: "#43cea2" }}
+                icon={
+                  <MaterialCommunityIcons
+                    name="car-sports"
+                    size={19}
+                    color="#43cea2"
+                  />
+                }
+                onPress={() => navigation.navigate("Register")}
+              />
             </View>
           )}
         </View>
 
         {/* Features Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Why Choose NexTrip?</Text>
+          <SectionTitle>Why Choose NexTrip?</SectionTitle>
           <View style={styles.featuresGrid}>
             <FeatureCard
               icon={<MaterialIcons name="security" size={29} color="#43cea2" />}
@@ -194,7 +216,7 @@ export default function HomeScreen({ navigation }) {
 
         {/* How it works */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How NexTrip Works</Text>
+          <SectionTitle>How NexTrip Works</SectionTitle>
           <View style={styles.stepsContainer}>
             {[
               "Choose your role",
@@ -252,349 +274,169 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-function RideDetail({ icon, label, value, valueStyle }) {
-  return (
-    <View style={styles.rideDetail}>
-      {icon}
-      <View style={styles.rideTextContainer}>
-        <Text style={styles.rideLabel}>{label}</Text>
-        <Text style={[styles.rideValue, valueStyle]}>{value}</Text>
-      </View>
-    </View>
-  );
-}
+// FeatureCard, StoreButton, and styles remain unchanged from your code above
 
-function FeatureCard({ icon, title, description }) {
-  return (
-    <View style={styles.featureCard}>
-      <View style={styles.featureIcon}>{icon}</View>
-      <Text style={styles.featureTitle}>{title}</Text>
-      <Text style={styles.featureDescription}>{description}</Text>
-    </View>
-  );
-}
-
-function StoreButton({ icon, title, subtitle, onPress, style }) {
-  return (
-    <TouchableOpacity style={style} onPress={onPress} activeOpacity={0.85}>
-      {icon}
-      <View style={styles.appButtonTextContainer}>
-        <Text style={styles.appButtonSmallText}>{subtitle}</Text>
-        <Text style={styles.appButtonLargeText}>{title}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
+// Optionally, update navigation route names ("Register" instead of "RegisterDriver") for consistency with your stack
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#fff",
+    // Or transparent if you use LinearGradient below
   },
   headerGradient: {
-    paddingTop: height * 0.05, // Increased padding to push content down
-    paddingBottom: height * 0.06,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 18,
   },
   header: {
-    paddingHorizontal: 24,
+    // container of header content
   },
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end", // Align items to bottom
-    marginBottom: height * 0.025, // Responsive margin
+    alignItems: "center",
+    marginTop: 30,
   },
   logoBrandContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: height * 0.01, // Responsive margin
-    transform: [{ translateY: 10 }], // Explicitly push down
   },
   logo: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    marginRight: 12,
+    width: 38,
+    height: 38,
+    marginRight: 8,
   },
   brand: {
+    fontSize: 22,
+    fontWeight: "bold",
     color: "#fff",
-    fontWeight: "800",
-    fontSize: 26, // Slightly larger
-    letterSpacing: 0.5,
-    transform: [{ translateY: -2 }], // Fine-tune alignment
+  },
+  profileButton: {
+    padding: 5,
   },
   greeting: {
     color: "#fff",
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 5,
-    marginTop: height * 0.005, // Small adjustment
+    fontSize: 18,
+    marginTop: 10,
   },
   scrollContent: {
-    paddingBottom: 30,
+    padding: 20,
+    paddingBottom: 60,
   },
   mainCard: {
     backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 20,
-    padding: 24,
-    marginTop: -20,
-    shadowColor: "#185a9d",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    borderRadius: 20, // slightly more rounded corners
+    padding: 20, // a bit more padding for spaciousness
     marginBottom: 24,
+    borderWidth: 1, // subtle border
+    borderColor: "#e0f2f1", // light teal-ish border matching theme
+    shadowColor: "#185a9d", // use theme color for shadow tint
+    shadowOpacity: 0.12, // slightly lighter shadow
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6, // slightly higher elevation for Android
   },
+
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 15,
   },
   cardTitle: {
+    fontWeight: "bold",
     fontSize: 18,
-    fontWeight: "700",
     color: "#185a9d",
   },
   viewAll: {
     color: "#43cea2",
     fontWeight: "600",
-    fontSize: 14,
-  },
-  rideDetail: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  rideTextContainer: {
-    marginLeft: 15,
-  },
-  rideLabel: {
-    fontSize: 12,
-    color: "#888",
-    fontWeight: "500",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  rideValue: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  completedStatus: {
-    color: "#00c853",
-    fontWeight: "700",
   },
   welcomeCard: {
     alignItems: "center",
+    paddingVertical: 36, // a little more vertical padding for breathing space
+    paddingHorizontal: 28, // slightly wider padding horizontally
+    backgroundColor: "#fff",
+    borderRadius: 20, // a bit more rounded corners for a modern feel
+    elevation: 4, // subtle shadow for depth (Android)
+    shadowColor: "#185a9d",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   welcomeTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 24, // slightly larger for emphasis
+    fontWeight: "bold",
     color: "#185a9d",
     marginBottom: 8,
-    textAlign: "center",
+    letterSpacing: 0.5,
   },
   welcomeSubtitle: {
-    fontSize: 15,
-    color: "#666",
-    marginBottom: 25,
-    textAlign: "center",
-  },
-  primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#185a9d",
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 15,
-    marginTop: 20,
-    shadowColor: "#185a9d",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontWeight: "700",
     fontSize: 16,
-    marginLeft: 10,
-  },
-  secondaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#43cea2",
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 15,
-    marginTop: 15,
-  },
-  secondaryButtonText: {
     color: "#43cea2",
-    fontWeight: "600",
-    fontSize: 15,
-    marginLeft: 8,
+    marginBottom: 24,
+    textAlign: "center", // center text for better alignment
+    letterSpacing: 0.3,
   },
+
   section: {
-    marginHorizontal: 20,
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#185a9d",
-    marginBottom: 15,
+    marginTop: 28,
   },
   featuresGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  featureCard: {
-    width: "48%",
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    padding: 18,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  featureIcon: {
-    backgroundColor: "rgba(67,206,162,0.1)",
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  featureTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#185a9d",
-    marginBottom: 5,
-  },
-  featureDescription: {
-    fontSize: 12,
-    color: "#666",
-    lineHeight: 18,
-  },
-  stepsContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    padding: 20,
-  },
   step: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 14,
   },
   stepNumberContainer: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: "#43cea2",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 12,
   },
   stepNumber: {
     color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
+    fontWeight: "bold",
   },
   stepText: {
-    fontSize: 15,
-    color: "#333",
-    fontWeight: "500",
-    flex: 1,
+    fontSize: 16,
+    color: "#185a9d",
   },
   appPromo: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: "#185a9d",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-    marginBottom: 30,
+    marginTop: 30,
     alignItems: "center",
   },
   appImage: {
-    width: 120,
-    height: 120,
-    resizeMode: "contain",
-    marginBottom: 20,
+    width: 280,
+    height: 160,
+    marginBottom: 18,
+    borderRadius: 16,
   },
   appPromoTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "bold",
     color: "#185a9d",
-    marginBottom: 8,
-    textAlign: "center",
   },
   appPromoText: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 20,
-    textAlign: "center",
-    maxWidth: "80%",
+    fontSize: 15,
+    color: "#43cea2",
+    marginBottom: 15,
   },
   appButtons: {
+    flexDirection: "row",
+    justifyContent: "center",
     width: "100%",
   },
   appStoreButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    width: "100%",
+    marginRight: 12,
+    flex: 1,
   },
   playStoreButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    width: "100%",
-  },
-  appButtonTextContainer: {
-    marginLeft: 10,
-  },
-  appButtonSmallText: {
-    fontSize: 10,
-    color: "#666",
-  },
-  appButtonLargeText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    flex: 1,
   },
 });
