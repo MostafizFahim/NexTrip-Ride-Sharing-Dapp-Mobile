@@ -39,19 +39,16 @@ const defaultRide = {
 };
 
 export default function RideDetailsScreen({ navigation, route }) {
-  const [ride, setRide] = useState(defaultRide);
+  const [ride, setRide] = useState(route?.params?.ride || defaultRide);
 
-  // If ride data is passed via navigation params, use it
   useEffect(() => {
-    if (route?.params?.ride) {
-      setRide(route.params.ride);
-    }
+    if (route?.params?.ride) setRide(route.params.ride);
   }, [route]);
 
   const handleBlockchain = () => {
     Alert.alert(
       "Blockchain Transaction",
-      `Transaction Hash:\n${ride.blockchain.txHash}`,
+      `Transaction Hash:\n${ride.blockchain?.txHash || "Not available"}`,
       [{ text: "OK" }]
     );
   };
@@ -151,15 +148,39 @@ export default function RideDetailsScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        {/* Blockchain and Help Actions */}
+        {/* Actions */}
         <View style={styles.actionBar}>
           <TouchableOpacity style={styles.actionBtn} onPress={handleBlockchain}>
             <FontAwesome5 name="lock" size={17} color="#43cea2" />
             <Text style={styles.actionText}>View on Blockchain</Text>
           </TouchableOpacity>
+          {ride.status === "Completed" && (
+            <>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() => navigation.navigate("TripReceipt", { ride })}
+              >
+                <MaterialIcons name="receipt" size={18} color="#185a9d" />
+                <Text style={[styles.actionText, { color: "#185a9d" }]}>
+                  View Receipt
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={() =>
+                  navigation.navigate("RateAndFeedbackScreen", { ride })
+                }
+              >
+                <MaterialIcons name="rate-review" size={18} color="#43cea2" />
+                <Text style={[styles.actionText, { color: "#43cea2" }]}>
+                  Rate Ride
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: "#e8f6f4" }]}
-            onPress={() => navigation.navigate("Feedback")}
+            onPress={() => navigation.navigate("HelpScreen")}
           >
             <Ionicons name="alert-circle" size={18} color="#185a9d" />
             <Text style={[styles.actionText, { color: "#185a9d" }]}>
@@ -265,21 +286,24 @@ const styles = StyleSheet.create({
   },
   actionBar: {
     flexDirection: "row",
+    flexWrap: "wrap",
     width: width > 400 ? 355 : "97%",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 4,
+    gap: 6,
   },
   actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f5fffc",
     paddingVertical: 12,
-    paddingHorizontal: 19,
+    paddingHorizontal: 17,
     borderRadius: 13,
-    marginHorizontal: 3,
-    marginTop: 4,
+    marginVertical: 4,
     elevation: 2,
+    marginRight: 6,
+    marginTop: 2,
   },
   actionText: {
     color: "#43cea2",

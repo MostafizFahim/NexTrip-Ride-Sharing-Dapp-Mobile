@@ -90,21 +90,23 @@ export default function OnboardingScreen({ navigation }) {
     }
   };
 
+  // Complete onboarding and navigate as per app flow
+  const completeOnboarding = () => {
+    markDone();
+    navigation.replace("Login");
+  };
+
   // Handle next button press
   const handleNext = () => {
     if (slide < slides.length - 1) {
       fadeToSlide(slide + 1);
     } else {
-      markDone();
-      navigation.replace("Login");
+      completeOnboarding();
     }
   };
 
   // Handle skip button press
-  const handleSkip = () => {
-    markDone();
-    navigation.replace("Login");
-  };
+  const handleSkip = completeOnboarding;
 
   // Accessibility: Announce slide changes
   useEffect(() => {
@@ -190,6 +192,28 @@ export default function OnboardingScreen({ navigation }) {
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
+
+        {/* DEV QUICK LINKS: Visible for testing fast navigation */}
+        {/* <View style={{ marginTop: 16, alignItems: "center" }}>
+          <TouchableOpacity
+            onPress={() => navigation.replace("Register")}
+            style={styles.devBtn}
+          >
+            <Text style={styles.devBtnText}>Go to Register</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.replace("SelectRole")}
+            style={styles.devBtn}
+          >
+            <Text style={styles.devBtnText}>Go to Select Role</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.replace("Home")}
+            style={styles.devBtn}
+          >
+            <Text style={styles.devBtnText}>Go to Home</Text>
+          </TouchableOpacity>
+        </View> */}
       </View>
     </LinearGradient>
   );
@@ -231,7 +255,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.13,
   },
   image: {
-    width: width > 400 ? 170 : 130,
+    width: width > 300 ? 170 : 130,
     height: width > 400 ? 170 : 130,
   },
   title: {
@@ -268,20 +292,41 @@ const styles = StyleSheet.create({
     borderColor: "#185a9d",
   },
   nextBtn: {
-    width: width > 400 ? 190 : "87%",
-    borderRadius: 15,
+    width: width > 300 ? 220 : width * 0.9,
+    alignSelf: "center",
+    borderRadius: 20,
     overflow: "hidden",
-    marginTop: 11,
+    marginTop: 15,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
   },
+
   btnGradient: {
     alignItems: "center",
-    borderRadius: 15,
-    paddingVertical: 13,
+    borderRadius: 20,
+    paddingVertical: 16, // taller button
   },
+
   nextText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 18,
+    fontSize: 20, // bigger font for better legibility
     letterSpacing: 1,
+  },
+
+  devBtn: {
+    marginVertical: 3,
+    backgroundColor: "#185a9d",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 22,
+  },
+  devBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
   },
 });

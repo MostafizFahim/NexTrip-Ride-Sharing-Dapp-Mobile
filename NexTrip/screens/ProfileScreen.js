@@ -15,6 +15,7 @@ import {
   MaterialIcons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
+import { FontAwesome5 } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
@@ -31,17 +32,25 @@ const defaultUser = {
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(defaultUser);
 
-  // Load user data from AsyncStorage on mount
+  // Load user data from AsyncStorage on mount/focus
   useEffect(() => {
-    (async () => {
+    const loadProfile = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem("userProfile");
+        // Try "userProfile", fallback to "user"
+        const storedUser =
+          (await AsyncStorage.getItem("userProfile")) ||
+          (await AsyncStorage.getItem("user"));
         if (storedUser) setUser(JSON.parse(storedUser));
       } catch (e) {
         console.warn("Failed to load user profile:", e);
       }
-    })();
-  }, []);
+    };
+    loadProfile();
+
+    // Optionally listen for screen focus (update when coming back from edit)
+    const unsubscribe = navigation.addListener("focus", loadProfile);
+    return unsubscribe;
+  }, [navigation]);
 
   // Confirm logout before proceeding
   const confirmLogout = () => {
@@ -53,11 +62,10 @@ export default function ProfileScreen({ navigation }) {
         {
           text: "Logout",
           style: "destructive",
-          onPress: () => {
-            // Clear any user data if needed
-            AsyncStorage.removeItem("userProfile").finally(() =>
-              navigation.replace("Login")
-            );
+          onPress: async () => {
+            await AsyncStorage.removeItem("userProfile");
+            await AsyncStorage.removeItem("user");
+            navigation.replace("Login");
           },
         },
       ],
@@ -107,13 +115,52 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.navigate("EditProfile")}
+            onPress={() => navigation.navigate("Notifications")}
+            accessibilityRole="button"
+            accessibilityLabel="View notifications"
+          >
+            <MaterialIcons name="notifications" size={22} color="#43cea2" />
+            <Text style={styles.buttonText}>Notifications</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate("EditProfile", { user })}
             accessibilityRole="button"
             accessibilityLabel="Edit profile"
           >
             <Feather name="edit-3" size={20} color="#43cea2" />
             <Text style={styles.buttonText}>Edit Profile</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate("Wallet")}
+            accessibilityRole="button"
+            accessibilityLabel="Wallet"
+          >
+            <MaterialIcons
+              name="account-balance-wallet"
+              size={22}
+              color="#43cea2"
+            />
+            <Text style={styles.buttonText}>Wallet</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate("PromoCodes")}
+          >
+            <MaterialIcons name="local-offer" size={22} color="#43cea2" />
+            <Text style={styles.buttonText}>Promo Codes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate("InviteFriends")}
+          >
+            <FontAwesome5 name="user-friends" size={20} color="#43cea2" />
+            <Text style={styles.buttonText}>Invite Friends</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.button,
@@ -148,10 +195,11 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     paddingHorizontal: 20,
     alignItems: "center",
-    elevation: 7,
+    elevation: 8,
     shadowColor: "#185a9d",
-    shadowOpacity: 0.14,
-    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.17,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 14,
   },
   avatarBox: {
     borderRadius: 55,
@@ -160,6 +208,9 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: 10,
     backgroundColor: "#fff",
+    elevation: 3,
+    shadowColor: "#43cea2",
+    shadowOpacity: 0.1,
   },
   avatar: {
     width: 70,

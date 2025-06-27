@@ -9,10 +9,9 @@ const UserContext = createContext();
 
 // 2. Provider
 export function UserProvider({ children }) {
-  const [user, setUser] = useState(null); // { name, email, role, ... }
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from storage on app start
   useEffect(() => {
     (async () => {
       try {
@@ -25,24 +24,20 @@ export function UserProvider({ children }) {
     })();
   }, []);
 
-  // Save user to storage
   const saveUser = async (userData) => {
     setUser(userData);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
   };
 
-  // Login
   const login = async (userData) => {
     await saveUser(userData);
   };
 
-  // Logout
   const logout = async () => {
     setUser(null);
     await AsyncStorage.removeItem(USER_KEY);
   };
 
-  // Update profile info
   const updateProfile = async (updates) => {
     const updated = { ...user, ...updates };
     await saveUser(updated);

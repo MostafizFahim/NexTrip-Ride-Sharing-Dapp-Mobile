@@ -2,40 +2,33 @@ import React from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
-  Image,
   StyleSheet,
   Dimensions,
-  SafeAreaView,
+  TouchableOpacity,
+  Image,
   ScrollView,
-  Platform,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import {
   MaterialIcons,
   MaterialCommunityIcons,
   FontAwesome,
-  Feather,
 } from "@expo/vector-icons";
-
 import { useUser } from "../components/UserContext";
-import useRideHistory from "../components/hooks/useRideHistory";
 import GradientButton from "../components/ui/GradientButton";
-import Avatar from "../components/ui/Avatar";
 import SectionTitle from "../components/ui/SectionTitle";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
-import EmptyState from "../components/ui/EmptyState";
-import RideCard from "../components/cards/RideCard"; // You can use this for recent rides
 import FeatureCard from "../components/cards/FeatureCard";
 import StoreButton from "../components/ui/StoreButton";
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import Avatar from "../components/ui/Avatar"; // Adjust import if needed
 
 const windowDimensions = Dimensions.get("window");
-const { width, height } = windowDimensions;
+const { width } = windowDimensions;
 
 export default function HomeScreen({ navigation }) {
   const { user } = useUser();
-  const { rides, loading } = useRideHistory();
-  const lastRide = rides && rides.length ? rides[0] : null;
+  const role = user?.role?.toLowerCase();
 
   return (
     <View style={styles.container}>
@@ -81,74 +74,84 @@ export default function HomeScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Main Card */}
         <View style={styles.mainCard}>
-          {user ? (
-            loading ? (
-              <LoadingSpinner message="Loading your rides..." overlay={false} />
-            ) : lastRide ? (
-              <View>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>Your Last Ride</Text>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate("RideHistory")}
-                  >
-                    <Text style={styles.viewAll}>View All</Text>
-                  </TouchableOpacity>
-                </View>
-                <RideCard
-                  {...lastRide}
-                  showAvatar={false}
-                  onPress={() =>
-                    navigation.navigate("RideDetails", { ride: lastRide })
-                  }
-                >
-                  <GradientButton
-                    title="Book Again"
-                    onPress={() => navigation.navigate("BookRide")}
-                    style={{ marginTop: 12 }}
-                    icon={
-                      <MaterialIcons name="search" size={20} color="#fff" />
-                    }
-                  />
-                </RideCard>
-              </View>
-            ) : (
-              <View style={styles.welcomeCard}>
-                <Text style={styles.welcomeTitle}>Book a ride anywhere</Text>
-                <Text style={styles.welcomeSubtitle}>
-                  Fast, secure, affordable & always nearby
-                </Text>
-                <GradientButton
-                  title="Book a Ride"
-                  onPress={() => navigation.navigate("BookRide")}
-                  icon={<MaterialIcons name="search" size={22} color="#fff" />}
-                />
-                <GradientButton
-                  title="Become a Driver"
-                  style={{
-                    marginTop: 12,
-                    backgroundColor: "#fff",
-                    borderWidth: 1.2,
-                    borderColor: "#43cea2",
-                  }}
-                  textStyle={{ color: "#43cea2" }}
-                  icon={
-                    <MaterialCommunityIcons
-                      name="car-sports"
-                      size={19}
-                      color="#43cea2"
-                    />
-                  }
-                  onPress={() => navigation.navigate("Register")}
-                />
-              </View>
-            )
-          ) : (
+          {/* ADMIN VIEW */}
+          {role === "admin" && (
             <View style={styles.welcomeCard}>
-              <Text style={styles.welcomeTitle}>
-                Book a ride anywhere in Dhaka
-              </Text>
+              <Text style={styles.welcomeTitle}>Admin Panel</Text>
+              <GradientButton
+                title="Admin Dashboard"
+                onPress={() => navigation.navigate("Admin")}
+                icon={
+                  <MaterialIcons
+                    name="admin-panel-settings"
+                    size={22}
+                    color="#fff"
+                  />
+                }
+                style={{ marginTop: 16, backgroundColor: "#185a9d" }}
+              />
+              <GradientButton
+                title="User Management"
+                onPress={() => navigation.navigate("UserManagement")}
+                icon={<MaterialIcons name="group" size={20} color="#fff" />}
+                style={{ marginTop: 12, backgroundColor: "#43cea2" }}
+              />
+              <GradientButton
+                title="Driver Management"
+                onPress={() => navigation.navigate("DriverManagement")}
+                icon={
+                  <MaterialCommunityIcons
+                    name="car-multiple"
+                    size={20}
+                    color="#fff"
+                  />
+                }
+                style={{ marginTop: 12, backgroundColor: "#43cea2" }}
+              />
+            </View>
+          )}
+
+          {/* DRIVER VIEW */}
+          {role === "driver" && (
+            <View style={styles.welcomeCard}>
+              <Text style={styles.welcomeTitle}>Welcome, Driver!</Text>
+              <GradientButton
+                title="Go Online"
+                onPress={() => navigation.navigate("Driver")}
+                icon={
+                  <MaterialCommunityIcons
+                    name="steering"
+                    size={20}
+                    color="#fff"
+                  />
+                }
+              />
+              <GradientButton
+                title="View Earnings"
+                onPress={() => navigation.navigate("Earnings")}
+                icon={
+                  <MaterialCommunityIcons
+                    name="cash-multiple"
+                    size={20}
+                    color="#fff"
+                  />
+                }
+                style={{ marginTop: 12 }}
+              />
+              <GradientButton
+                title="My Rides"
+                onPress={() => navigation.navigate("MyRides")}
+                icon={<MaterialIcons name="history" size={20} color="#fff" />}
+                style={{ marginTop: 12 }}
+              />
+            </View>
+          )}
+
+          {/* PASSENGER VIEW */}
+          {role !== "admin" && role !== "driver" && (
+            <View style={styles.welcomeCard}>
+              <Text style={styles.welcomeTitle}>Book a ride anywhere</Text>
               <Text style={styles.welcomeSubtitle}>
                 Fast, secure, affordable & always nearby
               </Text>
@@ -157,6 +160,13 @@ export default function HomeScreen({ navigation }) {
                 onPress={() => navigation.navigate("BookRide")}
                 icon={<MaterialIcons name="search" size={22} color="#fff" />}
               />
+              <GradientButton
+                title="Ride History"
+                onPress={() => navigation.navigate("RideHistory")}
+                icon={<MaterialIcons name="history" size={22} color="#fff" />}
+                style={{ marginTop: 12 }}
+              />
+              {/* Show Become a Driver option */}
               <GradientButton
                 title="Become a Driver"
                 style={{
@@ -173,7 +183,7 @@ export default function HomeScreen({ navigation }) {
                     color="#43cea2"
                   />
                 }
-                onPress={() => navigation.navigate("Register")}
+                onPress={() => navigation.navigate("SelectRole")}
               />
             </View>
           )}
@@ -211,26 +221,6 @@ export default function HomeScreen({ navigation }) {
               title="24/7 Support"
               description="Always here to help"
             />
-          </View>
-        </View>
-
-        {/* How it works */}
-        <View style={styles.section}>
-          <SectionTitle>How NexTrip Works</SectionTitle>
-          <View style={styles.stepsContainer}>
-            {[
-              "Choose your role",
-              "Set pickup & drop-off",
-              "Get matched instantly",
-              "Track and complete ride",
-            ].map((step, index) => (
-              <View key={index} style={styles.step}>
-                <View style={styles.stepNumberContainer}>
-                  <Text style={styles.stepNumber}>{index + 1}</Text>
-                </View>
-                <Text style={styles.stepText}>{step}</Text>
-              </View>
-            ))}
           </View>
         </View>
 
@@ -274,49 +264,55 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// FeatureCard, StoreButton, and styles remain unchanged from your code above
-
-// Optionally, update navigation route names ("Register" instead of "RegisterDriver") for consistency with your stack
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    // Or transparent if you use LinearGradient below
   },
   headerGradient: {
-    paddingVertical: 15,
-    paddingHorizontal: 18,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: "#185a9d",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   header: {
-    // container of header content
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 30,
   },
   logoBrandContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   logo: {
-    width: 38,
-    height: 38,
-    marginRight: 8,
+    width: 34,
+    height: 34,
+    marginRight: 10,
+    borderRadius: 8,
+    backgroundColor: "#fff",
   },
   brand: {
-    fontSize: 22,
-    fontWeight: "bold",
     color: "#fff",
+    fontWeight: "bold",
+    fontSize: 24,
+    letterSpacing: 1.1,
   },
   profileButton: {
-    padding: 5,
+    padding: 6,
   },
   greeting: {
+    marginTop: 10,
     color: "#fff",
     fontSize: 18,
-    marginTop: 10,
+    fontWeight: "600",
   },
   scrollContent: {
     padding: 20,
@@ -324,46 +320,31 @@ const styles = StyleSheet.create({
   },
   mainCard: {
     backgroundColor: "#fff",
-    borderRadius: 20, // slightly more rounded corners
-    padding: 20, // a bit more padding for spaciousness
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 24,
-    borderWidth: 1, // subtle border
-    borderColor: "#e0f2f1", // light teal-ish border matching theme
-    shadowColor: "#185a9d", // use theme color for shadow tint
-    shadowOpacity: 0.12, // slightly lighter shadow
+    borderWidth: 1,
+    borderColor: "#e0f2f1",
+    shadowColor: "#185a9d",
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 6, // slightly higher elevation for Android
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  cardTitle: {
-    fontWeight: "bold",
-    fontSize: 18,
-    color: "#185a9d",
-  },
-  viewAll: {
-    color: "#43cea2",
-    fontWeight: "600",
+    elevation: 6,
   },
   welcomeCard: {
     alignItems: "center",
-    paddingVertical: 36, // a little more vertical padding for breathing space
-    paddingHorizontal: 28, // slightly wider padding horizontally
+    paddingVertical: 36,
+    paddingHorizontal: 28,
     backgroundColor: "#fff",
-    borderRadius: 20, // a bit more rounded corners for a modern feel
-    elevation: 4, // subtle shadow for depth (Android)
+    borderRadius: 20,
+    elevation: 4,
     shadowColor: "#185a9d",
     shadowOpacity: 0.1,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
   welcomeTitle: {
-    fontSize: 24, // slightly larger for emphasis
+    fontSize: 24,
     fontWeight: "bold",
     color: "#185a9d",
     marginBottom: 8,
@@ -373,10 +354,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#43cea2",
     marginBottom: 24,
-    textAlign: "center", // center text for better alignment
+    textAlign: "center",
     letterSpacing: 0.3,
   },
-
   section: {
     marginTop: 28,
   },
@@ -385,35 +365,13 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
   },
-  step: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  stepNumberContainer: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#43cea2",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  stepNumber: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  stepText: {
-    fontSize: 16,
-    color: "#185a9d",
-  },
   appPromo: {
     marginTop: 30,
     alignItems: "center",
   },
   appImage: {
     width: 280,
-    height: 160,
+    height: 200,
     marginBottom: 18,
     borderRadius: 16,
   },

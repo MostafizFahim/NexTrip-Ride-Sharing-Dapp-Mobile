@@ -9,10 +9,11 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import MapView, { Marker, Polyline } from "react-native-maps";
 
 const { width } = Dimensions.get("window");
 
-// Dummy data, replace with props or real state!
+// Dummy data, replace with real props!
 const ride = {
   date: "27 Jun 2025, 10:38 PM",
   id: "#NT123456",
@@ -30,8 +31,9 @@ const ride = {
     { label: "Time Fare", value: 40 },
     { label: "Surge x1.2", value: 24 },
     { label: "Discount", value: -14 },
-    // You can add more items!
   ],
+  pickupCoord: { latitude: 23.8103, longitude: 90.4125 },
+  dropoffCoord: { latitude: 23.7921507, longitude: 90.4072755 },
   driver: {
     name: "Mehedi Hasan",
     photo: require("../assets/driver-avatar.png"),
@@ -42,6 +44,16 @@ const ride = {
 };
 
 export default function TripReceiptScreen({ navigation }) {
+  // fallback for coordinates
+  const pickupCoord = ride.pickupCoord || {
+    latitude: 23.8103,
+    longitude: 90.4125,
+  };
+  const dropoffCoord = ride.dropoffCoord || {
+    latitude: 23.7921507,
+    longitude: 90.4072755,
+  };
+
   return (
     <LinearGradient
       colors={["#43cea2", "#185a9d"]}
@@ -51,6 +63,32 @@ export default function TripReceiptScreen({ navigation }) {
     >
       <View style={styles.container}>
         <Text style={styles.title}>Trip Receipt</Text>
+        {/* Map preview */}
+        <MapView
+          style={styles.mapPreview}
+          initialRegion={{
+            latitude: (pickupCoord.latitude + dropoffCoord.latitude) / 2,
+            longitude: (pickupCoord.longitude + dropoffCoord.longitude) / 2,
+            latitudeDelta:
+              Math.abs(pickupCoord.latitude - dropoffCoord.latitude) * 5 + 0.03,
+            longitudeDelta:
+              Math.abs(pickupCoord.longitude - dropoffCoord.longitude) * 5 +
+              0.03,
+          }}
+          pointerEvents="none"
+          scrollEnabled={false}
+          zoomEnabled={false}
+        >
+          <Marker coordinate={pickupCoord} pinColor="#43cea2" />
+          <Marker coordinate={dropoffCoord} pinColor="#185a9d" />
+          <Polyline
+            coordinates={[pickupCoord, dropoffCoord]}
+            strokeColor="#43cea2"
+            strokeWidth={4}
+          />
+        </MapView>
+
+        {/* Main Ride Info */}
         <View style={styles.card}>
           <View style={styles.rowSpace}>
             <Text style={styles.label}>Ride ID</Text>
@@ -151,22 +189,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    paddingTop: 40,
-    paddingHorizontal: 12,
+    paddingTop: 38,
+    paddingHorizontal: 10,
   },
   title: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 27,
-    marginBottom: 12,
+    marginBottom: 10,
     letterSpacing: 1,
+  },
+  mapPreview: {
+    width: width > 400 ? 350 : "98%",
+    height: 100,
+    borderRadius: 14,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#43cea2",
+    overflow: "hidden",
   },
   card: {
     width: width > 400 ? 350 : "97%",
     backgroundColor: "#fff",
     borderRadius: 18,
     padding: 17,
-    marginBottom: 17,
+    marginBottom: 15,
     shadowColor: "#185a9d",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 7 },

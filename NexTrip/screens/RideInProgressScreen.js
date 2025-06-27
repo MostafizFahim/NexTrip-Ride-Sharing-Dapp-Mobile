@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
-  Animated,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { LinearGradient } from "expo-linear-gradient";
@@ -27,18 +26,16 @@ const COLORS = {
   lightGray: "#eee",
 };
 
-// Sample coordinates for pickup and dropoff (replace with real data)
-const pickupCoord = {
-  latitude: 23.7808875,
-  longitude: 90.2792371,
+// DEMO DRIVER DATA
+const driver = {
+  name: "Mehedi Hasan",
+  car: "Toyota Prius (White)",
+  number: "DHA-1234",
+  rating: 4.8,
+  phone: "+8801XXXXXXXXX",
 };
 
-const dropoffCoord = {
-  latitude: 23.7921507,
-  longitude: 90.4072755,
-};
-
-// Generate intermediate points between pickup and dropoff for animation
+// Generate route points for animation
 const generateRoutePoints = (start, end, steps = 50) => {
   const latStep = (end.latitude - start.latitude) / steps;
   const lonStep = (end.longitude - start.longitude) / steps;
@@ -52,22 +49,41 @@ const generateRoutePoints = (start, end, steps = 50) => {
   return points;
 };
 
-export default function RideInProgressScreen({ navigation }) {
+export default function RideInProgressScreen({ navigation, route }) {
+  // Get ride data from navigation params or use demo fallback
+  const { ride: rideFromRoute } = route.params || {};
+
+  const ride = rideFromRoute || {
+    pickup: "Bashundhara R/A",
+    dropoff: "Dhanmondi 27",
+    pickupCoord: { latitude: 23.7808875, longitude: 90.2792371 },
+    dropoffCoord: { latitude: 23.7921507, longitude: 90.4072755 },
+    status: "In Progress",
+    fare: 320,
+  };
+
+  // Use coords from ride or fallback coords
+  const pickupCoord = ride.pickupCoord || {
+    latitude: 23.7808875,
+    longitude: 90.2792371,
+  };
+  const dropoffCoord = ride.dropoffCoord || {
+    latitude: 23.7921507,
+    longitude: 90.4072755,
+  };
+
   const [driverPos, setDriverPos] = useState(pickupCoord);
   const [stepIndex, setStepIndex] = useState(0);
   const mapRef = useRef(null);
-  const markerRef = useRef(null);
 
   const routePoints = generateRoutePoints(pickupCoord, dropoffCoord);
 
-  // Animate the driver marker along routePoints
+  // Animate driver marker along route points
   useEffect(() => {
-    if (stepIndex >= routePoints.length) return; // animation end
-
+    if (stepIndex >= routePoints.length) return;
     const timeout = setTimeout(() => {
       setDriverPos(routePoints[stepIndex]);
       setStepIndex(stepIndex + 1);
-      // Animate map to follow driver
       mapRef.current?.animateToRegion(
         {
           ...routePoints[stepIndex],
@@ -77,29 +93,14 @@ export default function RideInProgressScreen({ navigation }) {
         1000
       );
     }, 1000);
-
     return () => clearTimeout(timeout);
   }, [stepIndex]);
 
-  // Calculate approximate distance (meters) and ETA (minutes)
+  // Calculate distance (meters) and ETA (minutes)
   const distanceMeters = haversine(pickupCoord, dropoffCoord);
   const distanceKm = (distanceMeters / 1000).toFixed(2);
-  const avgSpeedKmh = 30; // assume average speed 30 km/h
+  const avgSpeedKmh = 30; // assumed average speed
   const etaMinutes = Math.ceil((distanceKm / avgSpeedKmh) * 60);
-
-  const driver = {
-    name: "Mehedi Hasan",
-    car: "Toyota Prius (White)",
-    number: "DHA-1234",
-    rating: 4.8,
-    phone: "+8801XXXXXXXXX",
-  };
-  const ride = {
-    pickup: "Bashundhara R/A",
-    dropoff: "Dhanmondi 27",
-    status: "In Progress",
-    fare: 320,
-  };
 
   const handleCall = () => {
     Alert.alert("Call Driver", `Calling ${driver.phone}`, [
@@ -140,7 +141,6 @@ export default function RideInProgressScreen({ navigation }) {
           coordinate={driverPos}
           title="Driver"
           description={`${driver.name}`}
-          ref={markerRef}
           pinColor="blue"
           anchor={{ x: 0.5, y: 0.5 }}
         />
@@ -199,12 +199,14 @@ export default function RideInProgressScreen({ navigation }) {
       </View>
 
       <View style={styles.driverCard}>
-        <Text style={styles.driverName}>{driver.name}</Text>
-        <Text style={styles.driverCar}>{driver.car}</Text>
-        <Text style={styles.driverNumber}>{driver.number}</Text>
-        <View style={styles.driverRatingRow}>
-          <MaterialIcons name="star-rate" size={18} color="#FFD600" />
-          <Text style={styles.driverRating}>{driver.rating}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.driverName}>{driver.name}</Text>
+          <Text style={styles.driverCar}>{driver.car}</Text>
+          <Text style={styles.driverNumber}>{driver.number}</Text>
+          <View style={styles.driverRatingRow}>
+            <MaterialIcons name="star-rate" size={18} color="#FFD600" />
+            <Text style={styles.driverRating}>{driver.rating}</Text>
+          </View>
         </View>
         <TouchableOpacity
           style={styles.callBtn}
@@ -227,7 +229,7 @@ export default function RideInProgressScreen({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.completeBtn, { width: "48%" }]}
-          onPress={() => navigation.navigate("Home")}
+          onPress={() => navigation.navigate("TripReceipt", { ride })}
           activeOpacity={0.7}
           accessibilityLabel="Mark ride as completed"
         >
@@ -296,20 +298,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: COLORS.primaryDark,
-    flex: 1,
   },
   driverCar: { color: COLORS.primaryLight, fontSize: 13, fontWeight: "600" },
   driverNumber: { color: COLORS.grayText, fontSize: 12 },
   driverRatingRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 15,
+    marginTop: 4,
   },
   driverRating: { marginLeft: 5, fontWeight: "bold", color: "#FFD600" },
   callBtn: {
     backgroundColor: COLORS.primaryLight,
     padding: 8,
     borderRadius: 20,
+    marginLeft: 14,
   },
   bottomBar: {
     position: "absolute",

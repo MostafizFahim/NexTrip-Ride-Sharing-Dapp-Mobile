@@ -131,6 +131,12 @@ export default function DriverDashboardScreen({ navigation }) {
             </View>
           ))
         )}
+        <TouchableOpacity
+          style={styles.goHomeBtn}
+          onPress={() => navigation.navigate("Home")}
+        >
+          <Text style={styles.goHomeBtnText}>Go to Home</Text>
+        </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
   );
@@ -249,4 +255,19 @@ const styles = StyleSheet.create({
   },
   completed: { backgroundColor: "#43cea211", color: "#43cea2" },
   cancelled: { backgroundColor: "#b71c1c18", color: "#b71c1c" },
+  goHomeBtn: {
+    marginTop: 20,
+    backgroundColor: "#43cea2",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 12,
+    alignSelf: "center",
+    elevation: 3, // optional shadow for better button look
+  },
+  goHomeBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+    letterSpacing: 0.5, // for nicer text spacing
+  },
 });

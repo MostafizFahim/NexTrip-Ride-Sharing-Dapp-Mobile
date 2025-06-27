@@ -63,7 +63,25 @@ export default function App() {
             screenOptions={{ headerShown: false }}
           >
             <Stack.Screen name="SplashScreen" component={SplashScreen} />
-            <Stack.Screen name="Home" component={HomeScreen} />
+
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={({ navigation }) => ({
+                headerRight: () => (
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("Notifications")}
+                  >
+                    <MaterialIcons
+                      name="notifications"
+                      size={24}
+                      color="#43cea2"
+                      style={{ marginRight: 16 }}
+                    />
+                  </TouchableOpacity>
+                ),
+              })}
+            />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="SelectRole" component={SelectRoleScreen} />

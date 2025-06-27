@@ -18,6 +18,7 @@ import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
 const { width } = Dimensions.get("window");
 
 const STORAGE_KEY = "userProfile";
+const STORAGE_KEY_ALT = "user"; // for compatibility with other screens
 
 const defaultProfile = {
   name: "Mehedi Hasan",
@@ -26,32 +27,35 @@ const defaultProfile = {
   avatar: require("../assets/profile-avatar.png"),
 };
 
-export default function EditProfileScreen({ navigation }) {
-  const [name, setName] = useState(defaultProfile.name);
-  const [email, setEmail] = useState(defaultProfile.email);
-  const [phone, setPhone] = useState(defaultProfile.phone);
-  const [avatar, setAvatar] = useState(defaultProfile.avatar);
+export default function EditProfileScreen({ navigation, route }) {
+  // Load from navigation param if available
+  const initialProfile = (route?.params && route.params.user) || defaultProfile;
 
-  // Load saved profile on mount
+  const [name, setName] = useState(initialProfile.name);
+  const [email, setEmail] = useState(initialProfile.email);
+  const [phone, setPhone] = useState(initialProfile.phone);
+  const [avatar, setAvatar] = useState(initialProfile.avatar);
+
+  // Load saved profile on mount (if not coming from param)
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const savedProfile = await AsyncStorage.getItem(STORAGE_KEY);
+        const savedProfile =
+          (await AsyncStorage.getItem(STORAGE_KEY)) ||
+          (await AsyncStorage.getItem(STORAGE_KEY_ALT));
         if (savedProfile) {
           const profile = JSON.parse(savedProfile);
-          setName(profile.name || defaultProfile.name);
-          setEmail(profile.email || defaultProfile.email);
-          setPhone(profile.phone || defaultProfile.phone);
-          if (profile.avatar) {
-            // avatar URI saved as string? For now, keep default avatar
-            // You can add image picker later to update avatar
-          }
+          setName(profile.name || initialProfile.name);
+          setEmail(profile.email || initialProfile.email);
+          setPhone(profile.phone || initialProfile.phone);
+          setAvatar(profile.avatar || initialProfile.avatar);
         }
       } catch (e) {
         Alert.alert("Error loading profile");
       }
     };
-    loadProfile();
+    // Only load from storage if NOT coming from navigation param
+    if (!route?.params?.user) loadProfile();
   }, []);
 
   // Save updated profile locally
@@ -62,7 +66,9 @@ export default function EditProfileScreen({ navigation }) {
     }
     try {
       const profile = { name, email, phone, avatar };
+      // Save to both keys for compatibility
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      await AsyncStorage.setItem(STORAGE_KEY_ALT, JSON.stringify(profile));
       Alert.alert("Profile updated!");
       navigation.goBack();
     } catch (e) {
@@ -84,7 +90,10 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.container}>
           <Text style={styles.title}>Edit Profile</Text>
           {/* Avatar (optional: make clickable for image picker) */}
-          <TouchableOpacity>
+          <TouchableOpacity
+            // onPress={() => {/* Add image picker logic here */}}
+            activeOpacity={0.7}
+          >
             <Image source={avatar} style={styles.avatar} />
             <View style={styles.cameraWrap}>
               <FontAwesome name="camera" size={20} color="#185a9d" />

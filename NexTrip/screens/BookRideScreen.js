@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,17 +9,24 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   MaterialCommunityIcons,
   FontAwesome,
   Ionicons,
+  AntDesign,
 } from "@expo/vector-icons";
-
+import * as Location from "expo-location";
 import { useUser } from "../components/UserContext";
 import useRideHistory from "../components/hooks/useRideHistory";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
+import {
+  useIsFocused,
+  useRoute,
+  CommonActions,
+} from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
@@ -35,48 +42,138 @@ export default function BookRideScreen({ navigation }) {
 
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
+  const [pickupCoord, setPickupCoord] = useState(null);
+  const [dropoffCoord, setDropoffCoord] = useState(null);
   const [rideType, setRideType] = useState("Bike");
   const [submitting, setSubmitting] = useState(false);
 
+  const isFocused = useIsFocused();
+  const route = useRoute();
+  const routeParamsRef = useRef(route.params);
+
+  // Handle location updates from MapFullScreen
+  useEffect(() => {
+    if (isFocused && route.params && route.params !== routeParamsRef.current) {
+      const { locationType, address, coordinates } = route.params;
+
+      if (locationType === "pickup") {
+        setPickup(address);
+        setPickupCoord(coordinates);
+      } else if (locationType === "dropoff") {
+        setDropoff(address);
+        setDropoffCoord(coordinates);
+      }
+
+      routeParamsRef.current = route.params;
+
+      // Clear params without triggering update
+      navigation.dispatch(
+        CommonActions.setParams({
+          locationType: undefined,
+          address: undefined,
+          coordinates: undefined,
+        })
+      );
+    }
+  }, [isFocused, route.params, navigation]);
+
   const swapLocations = () => {
+    const tempAddress = pickup;
+    const tempCoord = pickupCoord;
+
     setPickup(dropoff);
-    setDropoff(pickup);
+    setPickupCoord(dropoffCoord);
+    setDropoff(tempAddress);
+    setDropoffCoord(tempCoord);
+  };
+
+  const clearPickup = () => {
+    setPickup("");
+    setPickupCoord(null);
+  };
+
+  const clearDropoff = () => {
+    setDropoff("");
+    setDropoffCoord(null);
+  };
+
+  const getCoordinates = async (address, type) => {
+    if (type === "pickup" && pickupCoord) return pickupCoord;
+    if (type === "dropoff" && dropoffCoord) return dropoffCoord;
+
+    try {
+      const locations = await Location.geocodeAsync(address);
+      return locations[0]
+        ? {
+            latitude: locations[0].latitude,
+            longitude: locations[0].longitude,
+          }
+        : null;
+    } catch (e) {
+      console.warn("Geocoding failed:", e);
+      return null;
+    }
   };
 
   const handleBook = async () => {
     if (!pickup.trim() || !dropoff.trim()) {
-      alert("Please enter both pickup and drop-off locations.");
+      Alert.alert(
+        "Missing Info",
+        "Please enter both pickup and drop-off locations."
+      );
       return;
     }
+
     setSubmitting(true);
+    const pickupCoords = await getCoordinates(pickup, "pickup");
+    const dropoffCoords = await getCoordinates(dropoff, "dropoff");
 
-    // Optionally calculate fare (add logic as needed)
+    if (!pickupCoords || !dropoffCoords) {
+      Alert.alert(
+        "Error",
+        "Failed to find location coordinates. Please check your addresses."
+      );
+      setSubmitting(false);
+      return;
+    }
+
     const baseFare = rideType === "Bike" ? 60 : rideType === "Car" ? 140 : 80;
-    const randomExtra = Math.floor(Math.random() * 100);
-    const fare = baseFare + randomExtra;
+    const fare = baseFare + Math.floor(Math.random() * 100);
 
-    // Create ride object
     const ride = {
+      id: Date.now().toString(),
       pickup,
       dropoff,
+      pickupCoord: pickupCoords,
+      dropoffCoord: dropoffCoords,
       rideType,
-      status: "Searching", // or "Booked"
+      status: "Searching",
       fare,
       date: new Date().toISOString().slice(0, 10),
       time: new Date().toLocaleTimeString(),
       user: user?.name || "You",
     };
 
-    // Save to local ride history
-    await addRide(ride);
+    try {
+      await addRide(ride);
+      navigation.navigate("SearchingForDriver", { ride });
+      setPickup("");
+      setDropoff("");
+      setPickupCoord(null);
+      setDropoffCoord(null);
+    } catch (e) {
+      Alert.alert("Error", "Failed to book ride. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-    setSubmitting(false);
-    setPickup("");
-    setDropoff("");
-    setRideType("Bike");
-
-    // Optionally navigate to a searching/progress screen
-    navigation.navigate("SearchingForDriver", { ride });
+  const navigateToMap = (locationType) => {
+    navigation.navigate("MapFullScreen", {
+      locationType,
+      returnTo: "BookRide",
+      initialLocation: locationType === "pickup" ? pickupCoord : dropoffCoord,
+    });
   };
 
   return (
@@ -95,6 +192,7 @@ export default function BookRideScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.title}>Book a Ride</Text>
+
           <View style={styles.inputGroup}>
             <View style={styles.inputRow}>
               <MaterialCommunityIcons
@@ -105,15 +203,29 @@ export default function BookRideScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Pickup Location"
-                placeholderTextColor="#888"
+                placeholderTextColor="#aaa"
                 value={pickup}
                 onChangeText={setPickup}
                 editable={!submitting}
               />
+              {!!pickup && (
+                <TouchableOpacity onPress={clearPickup} style={styles.clearBtn}>
+                  <AntDesign name="closecircle" size={18} color="#aaa" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.mapBtn}
+                onPress={() => navigateToMap("pickup")}
+              >
+                <Ionicons name="map" size={18} color="#43cea2" />
+                <Text style={styles.mapBtnText}>Map</Text>
+              </TouchableOpacity>
             </View>
+
             <TouchableOpacity style={styles.swapBtn} onPress={swapLocations}>
-              <Ionicons name="swap-vertical" size={22} color="#185a9d" />
+              <Ionicons name="swap-vertical" size={26} color="#185a9d" />
             </TouchableOpacity>
+
             <View style={styles.inputRow}>
               <MaterialCommunityIcons
                 name="map-marker-check"
@@ -123,11 +235,28 @@ export default function BookRideScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Dropoff Location"
-                placeholderTextColor="#888"
+                placeholderTextColor="#aaa"
                 value={dropoff}
                 onChangeText={setDropoff}
                 editable={!submitting}
               />
+              {!!dropoff && (
+                <TouchableOpacity
+                  onPress={clearDropoff}
+                  style={styles.clearBtn}
+                >
+                  <AntDesign name="closecircle" size={18} color="#aaa" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.mapBtn}
+                onPress={() => navigateToMap("dropoff")}
+              >
+                <Ionicons name="map" size={18} color="#185a9d" />
+                <Text style={[styles.mapBtnText, { color: "#185a9d" }]}>
+                  Map
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -162,9 +291,14 @@ export default function BookRideScreen({ navigation }) {
           </View>
 
           <TouchableOpacity
-            style={styles.bookBtn}
+            style={[
+              styles.bookBtn,
+              (!pickup || !dropoff || submitting || loading) && {
+                opacity: 0.6,
+              },
+            ]}
             onPress={handleBook}
-            disabled={submitting || loading}
+            disabled={!pickup || !dropoff || submitting || loading}
           >
             <LinearGradient
               colors={["#43cea2", "#185a9d"]}
@@ -196,9 +330,7 @@ export default function BookRideScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  bg: {
-    flex: 1,
-  },
+  bg: { flex: 1 },
   container: {
     flexGrow: 1,
     justifyContent: "center",
@@ -207,31 +339,32 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
   },
   title: {
-    fontSize: 27,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#185a9d",
-    marginBottom: 24,
+    marginBottom: 28,
     letterSpacing: 0.8,
   },
   inputGroup: {
     width: width > 400 ? 340 : "93%",
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 30,
+    padding: 18,
+    marginBottom: 36,
     shadowColor: "#185a9d",
-    shadowOpacity: 0.09,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 7,
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 8,
+    elevation: 8,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 14,
     backgroundColor: "#f7f9fb",
-    borderRadius: 11,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: "#e0e0e0",
   },
@@ -240,55 +373,71 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 16,
     color: "#222",
-    paddingVertical: 7,
+    paddingVertical: Platform.OS === "ios" ? 10 : 7,
+  },
+  clearBtn: {
+    marginLeft: 6,
   },
   swapBtn: {
     alignSelf: "center",
-    marginVertical: 2,
-    marginBottom: 6,
+    marginBottom: 10,
     backgroundColor: "#f6f6f6",
-    padding: 7,
-    borderRadius: 8,
+    padding: 8,
+    borderRadius: 10,
     alignItems: "center",
-    width: 36,
+    width: 40,
+  },
+  mapBtn: {
+    marginLeft: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: "#e7f9f4",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  mapBtnText: {
+    color: "#43cea2",
+    fontWeight: "700",
+    fontSize: 14,
+    marginLeft: 5,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#185a9d",
-    marginBottom: 13,
-    marginTop: -10,
+    marginBottom: 16,
     alignSelf: "flex-start",
-    marginLeft: width > 400 ? 42 : 24,
+    marginLeft: width > 400 ? 36 : 24,
   },
   rideTypeRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 32,
+    marginBottom: 40,
     width: "80%",
   },
   rideTypeBtn: {
     alignItems: "center",
-    marginHorizontal: 13,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 12,
+    marginHorizontal: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
     backgroundColor: "#f6f6f6",
   },
   rideTypeBtnSelected: {
     backgroundColor: "#e7f9f4",
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#43cea2",
   },
   rideTypeText: {
     color: "#666",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
-    marginTop: 5,
+    marginTop: 6,
   },
   bookBtn: {
     width: width > 400 ? 280 : "90%",
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: "hidden",
     marginTop: 10,
   },
@@ -296,14 +445,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 15,
-    borderRadius: 14,
+    paddingVertical: 16,
+    borderRadius: 16,
   },
   bookText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 18,
+    fontSize: 19,
     marginLeft: 9,
-    letterSpacing: 1.1,
+    letterSpacing: 1.2,
   },
 });

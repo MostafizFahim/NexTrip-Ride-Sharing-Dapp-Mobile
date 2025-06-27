@@ -17,20 +17,24 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
-const driver = {
+// If no driver/ride is passed, fallback
+const fallbackDriver = {
   name: "Mehedi Hasan",
   photo: require("../assets/driver-avatar.png"),
   car: "Toyota Prius (White)",
   rating: 4.8,
 };
 
-export default function RateAndFeedbackScreen({ navigation }) {
+export default function RateAndFeedbackScreen({ navigation, route }) {
+  // Try to get driver from ride, or fallback
+  const ride = route?.params?.ride || {};
+  const driver = ride.driver || fallbackDriver;
+
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
 
-  // Star rating UI
-  const renderStars = () => {
-    return Array.from({ length: 5 }).map((_, i) => (
+  const renderStars = () =>
+    Array.from({ length: 5 }).map((_, i) => (
       <TouchableOpacity key={i} onPress={() => setRating(i + 1)}>
         <MaterialIcons
           name={rating > i ? "star" : "star-border"}
@@ -40,7 +44,6 @@ export default function RateAndFeedbackScreen({ navigation }) {
         />
       </TouchableOpacity>
     ));
-  };
 
   const handleSubmit = () => {
     if (rating === 0) {
@@ -49,14 +52,13 @@ export default function RateAndFeedbackScreen({ navigation }) {
     }
     Keyboard.dismiss();
 
-    // Simulate saving feedback (local state or AsyncStorage could be used here)
-    Alert.alert("Thank you!", "Your feedback has been submitted.");
-    // Optionally clear fields if staying on this screen:
-    // setRating(0);
-    // setFeedback("");
+    // Optionally, update your ride history with this feedback/rating here
 
-    // Navigate away after submission
-    navigation.replace("Home"); // Or navigate("RideHistory")
+    Alert.alert("Thank you!", "Your feedback has been submitted.");
+
+    // Go to TripReceipt if you want, or RideHistory, or Home
+    navigation.replace("TripReceipt", { ride: { ...ride, feedback, rating } });
+    // Or: navigation.replace("Home");
   };
 
   return (

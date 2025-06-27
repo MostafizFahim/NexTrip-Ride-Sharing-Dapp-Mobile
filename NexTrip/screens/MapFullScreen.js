@@ -1,15 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
+  TouchableOpacity,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   Platform,
   Alert,
 } from "react-native";
-//import MapView from "react-native-maps";
-
 import MapView, { Marker } from "react-native-maps";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -17,7 +15,6 @@ import * as Location from "expo-location";
 
 const { width, height } = Dimensions.get("window");
 
-// Default location: Dhaka city center
 const initialRegion = {
   latitude: 23.8103,
   longitude: 90.4125,
@@ -26,62 +23,65 @@ const initialRegion = {
 };
 
 export default function MapFullScreen({ navigation, route }) {
-  const [selected, setSelected] = useState(route?.params?.location || null);
-  const [locationPermission, setLocationPermission] = useState(null);
+  const [selected, setSelected] = useState(null);
   const mapRef = useRef(null);
+  const initialLocationSet = useRef(false);
 
-  // Request permission on mount (optional)
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status === "granted");
       if (status !== "granted") {
-        Alert.alert(
-          "Permission denied",
-          "Location permission is required to use this feature."
-        );
+        Alert.alert("Permission denied", "Location permission is required.");
       }
     })();
   }, []);
 
-  const handleUseMyLocation = async () => {
-    if (!locationPermission) {
-      Alert.alert(
-        "Permission denied",
-        "Enable location permission in settings to use this feature."
-      );
-      return;
-    }
-    try {
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
-      });
-      const loc = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-      setSelected(loc);
+  useEffect(() => {
+    if (route.params?.initialLocation && !initialLocationSet.current) {
+      setSelected(route.params.initialLocation);
       mapRef.current?.animateToRegion({
-        ...loc,
-        latitudeDelta: 0.008,
-        longitudeDelta: 0.008,
+        ...route.params.initialLocation,
+        latitudeDelta: 0.03,
+        longitudeDelta: 0.03,
       });
-    } catch (error) {
-      Alert.alert("Error", "Failed to get current location.");
+      initialLocationSet.current = true;
     }
-  };
+  }, [route.params?.initialLocation]);
 
   const handleSelect = (e) => {
     setSelected(e.nativeEvent.coordinate);
   };
 
-  const handleConfirm = () => {
-    if (navigation && navigation.navigate) {
+  const handleConfirm = async () => {
+    if (!selected) return;
+
+    try {
+      const [addressInfo] = await Location.reverseGeocodeAsync(selected);
+      const address =
+        [
+          addressInfo?.name,
+          addressInfo?.street,
+          addressInfo?.city,
+          addressInfo?.region,
+        ]
+          .filter(Boolean)
+          .join(", ") ||
+        `Lat: ${selected.latitude.toFixed(
+          5
+        )}, Lng: ${selected.longitude.toFixed(5)}`;
+
       navigation.navigate({
-        name: route?.params?.returnTo || "BookRide",
-        params: { location: selected },
+        name: route.params.returnTo || "BookRide",
+        params: {
+          locationType: route.params.locationType,
+          address,
+          coordinates: selected,
+        },
         merge: true,
       });
+    } catch (error) {
+      console.error("Reverse geocoding failed:", error);
+      Alert.alert("Error", "Failed to get address. Please try again.");
     }
   };
 
@@ -99,9 +99,17 @@ export default function MapFullScreen({ navigation, route }) {
         >
           <MaterialIcons name="arrow-back" size={24} color="#43cea2" />
         </TouchableOpacity>
-        <Text style={styles.title}>Select Location</Text>
-        <TouchableOpacity style={styles.myLocBtn} onPress={handleUseMyLocation}>
-          <MaterialIcons name="my-location" size={22} color="#185a9d" />
+        <Text style={styles.title}>
+          {route.params?.locationType === "pickup"
+            ? "Select Pickup Location"
+            : "Select Dropoff Location"}
+        </Text>
+        <TouchableOpacity
+          style={[styles.confirmBtn, !selected && { backgroundColor: "#ccc" }]}
+          onPress={handleConfirm}
+          disabled={!selected}
+        >
+          <Text style={styles.confirmText}>Confirm</Text>
         </TouchableOpacity>
       </View>
       <MapView
@@ -109,45 +117,23 @@ export default function MapFullScreen({ navigation, route }) {
         style={styles.map}
         initialRegion={initialRegion}
         showsUserLocation
-        showsMyLocationButton={Platform.OS === "android"}
+        showsMyLocationButton
         onPress={handleSelect}
       >
         {selected && (
           <Marker
             coordinate={selected}
-            pinColor="#43cea2"
             draggable
             onDragEnd={handleSelect}
+            pinColor="#43cea2"
           />
         )}
       </MapView>
-      <View style={styles.bottomBar}>
-        <Text style={styles.locText}>
-          {selected
-            ? `Lat: ${selected.latitude.toFixed(
-                5
-              )}, Lng: ${selected.longitude.toFixed(5)}`
-            : "Tap on the map to select a location."}
-        </Text>
-        <TouchableOpacity
-          style={[styles.confirmBtn, !selected && { opacity: 0.5 }]}
-          onPress={handleConfirm}
-          disabled={!selected}
-        >
-          <LinearGradient
-            colors={["#43cea2", "#185a9d"]}
-            style={styles.btnGradient}
-            start={[0, 0]}
-            end={[1, 0]}
-          >
-            <MaterialIcons name="check-circle" size={20} color="#fff" />
-            <Text style={styles.confirmText}>Confirm Location</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
     </LinearGradient>
   );
 }
+
+// ... (keep the same styles as before)
 
 const styles = StyleSheet.create({
   bg: { flex: 1 },
@@ -156,83 +142,50 @@ const styles = StyleSheet.create({
     top: Platform.OS === "ios" ? 48 : 20,
     left: 0,
     right: 0,
-    zIndex: 3,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 13,
-    paddingBottom: 6,
-    backgroundColor: "rgba(255,255,255,0.91)",
-    borderBottomLeftRadius: 17,
-    borderBottomRightRadius: 17,
-    height: 54,
     justifyContent: "space-between",
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    height: 56,
+    zIndex: 10,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   backBtn: {
+    padding: 5,
     backgroundColor: "#fff",
     borderRadius: 10,
-    padding: 5,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
   title: {
-    color: "#185a9d",
+    fontSize: 18,
     fontWeight: "bold",
-    fontSize: 17.5,
-    marginLeft: 10,
-    flex: 1,
+    color: "#185a9d",
+    maxWidth: "60%",
     textAlign: "center",
   },
-  myLocBtn: {
-    backgroundColor: "#e7f9f4",
-    borderRadius: 10,
-    padding: 7,
-    marginLeft: 10,
-    elevation: 2,
-  },
-  map: {
-    flex: 1,
-    width,
-    height,
-    marginTop: Platform.OS === "ios" ? 54 : 54,
-    zIndex: 1,
-  },
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(255,255,255,0.97)",
-    borderTopLeftRadius: 19,
-    borderTopRightRadius: 19,
-    alignItems: "center",
-    padding: 17,
-    zIndex: 5,
-    elevation: 8,
-  },
-  locText: {
-    color: "#185a9d",
-    fontWeight: "600",
-    fontSize: 15,
-    marginBottom: 7,
-    letterSpacing: 0.6,
-  },
   confirmBtn: {
-    borderRadius: 13,
-    overflow: "hidden",
-    width: width > 400 ? 270 : "90%",
-    alignSelf: "center",
-  },
-  btnGradient: {
-    flexDirection: "row",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#43cea2",
+    borderRadius: 14,
+    minWidth: 80,
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 13,
-    paddingVertical: 14,
   },
   confirmText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 15.5,
-    marginLeft: 8,
-    letterSpacing: 0.6,
+    fontSize: 16,
+  },
+  map: {
+    flex: 1,
+    marginTop: 56,
   },
 });

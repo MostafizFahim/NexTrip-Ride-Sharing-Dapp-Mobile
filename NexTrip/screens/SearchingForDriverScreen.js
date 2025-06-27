@@ -15,11 +15,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 const { width } = Dimensions.get("window");
 const DRIVER_SEARCH_DELAY = 3200; // ms
 
-export default function SearchingForDriverScreen({ navigation }) {
+export default function SearchingForDriverScreen({ navigation, route }) {
+  const ride = route?.params?.ride;
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Animate the pulse ring
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -35,12 +35,10 @@ export default function SearchingForDriverScreen({ navigation }) {
       ])
     ).start();
 
-    // Announce to screen readers
     AccessibilityInfo.announceForAccessibility("Finding you a driver");
 
-    // Simulate driver match after delay
     const timer = setTimeout(() => {
-      navigation.replace("RideInProgress");
+      navigation.replace("RideProgress", { ride }); // <-- pass ride forward!
     }, DRIVER_SEARCH_DELAY);
 
     return () => clearTimeout(timer);

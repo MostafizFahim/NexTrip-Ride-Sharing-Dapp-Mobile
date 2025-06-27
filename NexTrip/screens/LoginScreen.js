@@ -182,10 +182,32 @@ export default function LoginScreen() {
           {/* Sign Up Link */}
           <View style={styles.signUpRow}>
             <Text style={styles.signUpText}>New to NexTrip?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+            <TouchableOpacity onPress={() => navigation.navigate("SelectRole")}>
               <Text style={styles.signUpLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
+
+          {/* DEV QUICK LINKS */}
+          {/* <View style={{ marginTop: 16, alignItems: "center" }}>
+            <TouchableOpacity
+              onPress={() => navigation.replace("Home")}
+              style={styles.devBtn}
+            >
+              <Text style={styles.devBtnText}>Go to Home</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.replace("PassengerDashboard")}
+              style={styles.devBtn}
+            >
+              <Text style={styles.devBtnText}>Go to Passenger Dashboard</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.replace("Driver")}
+              style={styles.devBtn}
+            >
+              <Text style={styles.devBtnText}>Go to Driver Dashboard</Text>
+            </TouchableOpacity>
+          </View> */}
         </View>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -310,5 +332,17 @@ const styles = StyleSheet.create({
     color: "#185a9d",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  devBtn: {
+    marginVertical: 3,
+    backgroundColor: "#185a9d",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 22,
+  },
+  devBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
   },
 });

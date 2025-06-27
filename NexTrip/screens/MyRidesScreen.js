@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  ScrollView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
@@ -40,7 +39,7 @@ const rides = [
     duration: "10 min",
   },
   // Add more rides as needed
-];
+].sort((a, b) => new Date(b.date) - new Date(a.date)); // Recent first
 
 export default function MyRidesScreen({ navigation }) {
   const renderRide = ({ item }) => (
@@ -107,7 +106,7 @@ export default function MyRidesScreen({ navigation }) {
       )}
       <TouchableOpacity
         style={styles.detailsBtn}
-        onPress={() => navigation.navigate("RideDetails", { ride: item })}
+        onPress={() => navigation.navigate("DriverRideDetails", { ride: item })}
       >
         <Text style={styles.detailsText}>View Details</Text>
       </TouchableOpacity>
@@ -126,13 +125,20 @@ export default function MyRidesScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         renderItem={renderRide}
         contentContainerStyle={{
-          paddingBottom: 30,
-          paddingTop: 34,
+          paddingBottom: 34,
+          paddingTop: 36,
           paddingHorizontal: 8,
           alignItems: "center",
         }}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={<Text style={styles.title}>My Ride History</Text>}
+        ListEmptyComponent={
+          <View style={{ marginTop: 50 }}>
+            <Text style={{ color: "#fff", fontSize: 17, opacity: 0.8 }}>
+              No rides found.
+            </Text>
+          </View>
+        }
       />
     </LinearGradient>
   );
@@ -140,15 +146,10 @@ export default function MyRidesScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   bg: { flex: 1 },
-  container: {
-    alignItems: "center",
-    paddingTop: 34,
-    paddingHorizontal: 8,
-  },
   title: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 24,
+    fontSize: 25,
     marginBottom: 13,
     letterSpacing: 1,
   },

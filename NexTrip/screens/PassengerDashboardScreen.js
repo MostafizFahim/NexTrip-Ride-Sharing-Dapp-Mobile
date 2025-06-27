@@ -15,7 +15,6 @@ import { MaterialIcons, FontAwesome5, Feather } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
-// Default user data for first load
 const defaultUser = {
   name: "Rayhan Ferdous",
   avatar: require("../assets/srejon.jpg"),
@@ -24,6 +23,7 @@ const defaultUser = {
     dropoff: "Dhanmondi 27",
     time: "Today 5:30 PM",
     status: "Scheduled",
+    rideId: "101", // Add rideId if you want to track
   },
 };
 
@@ -54,7 +54,6 @@ export default function PassengerDashboardScreen({ navigation }) {
       try {
         const savedUser = await AsyncStorage.getItem("user");
         const savedRides = await AsyncStorage.getItem("rideHistory");
-
         if (savedUser) setUser(JSON.parse(savedUser));
         if (savedRides) setRideHistory(JSON.parse(savedRides));
       } catch (e) {
@@ -73,19 +72,6 @@ export default function PassengerDashboardScreen({ navigation }) {
     AsyncStorage.setItem("rideHistory", JSON.stringify(rideHistory));
   }, [rideHistory]);
 
-  // For testing: Add a new ride (simulate booking) - optional
-  const addTestRide = () => {
-    const newRide = {
-      id: (rideHistory.length + 1).toString(),
-      pickup: "New Pickup",
-      dropoff: "New Dropoff",
-      fare: Math.floor(Math.random() * 300) + 100,
-      date: new Date().toISOString().slice(0, 10),
-    };
-    setRideHistory([newRide, ...rideHistory]);
-    Alert.alert("Test ride added");
-  };
-
   return (
     <LinearGradient colors={["#43cea2", "#185a9d"]} style={styles.bg}>
       <View style={styles.container}>
@@ -94,9 +80,7 @@ export default function PassengerDashboardScreen({ navigation }) {
           <Image source={user.avatar} style={styles.avatar} />
           <TouchableOpacity
             style={styles.editBtn}
-            onPress={() =>
-              navigation.navigate("EditProfile", { user, setUser })
-            }
+            onPress={() => navigation.navigate("EditProfile")}
           >
             <Feather name="edit-3" size={18} color="#43cea2" />
           </TouchableOpacity>
@@ -123,7 +107,12 @@ export default function PassengerDashboardScreen({ navigation }) {
           </View>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.navigate("RideProgress")}
+            // Track ride in progress
+            onPress={() =>
+              navigation.navigate("RideInProgressScreen", {
+                rideId: user.nextRide.rideId || "scheduled",
+              })
+            }
           >
             <Text style={styles.primaryButtonText}>Track Ride</Text>
           </TouchableOpacity>
@@ -137,8 +126,9 @@ export default function PassengerDashboardScreen({ navigation }) {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.rideHistoryRow}
+              // Go to ride details (from here you can rate & feedback)
               onPress={() =>
-                navigation.navigate("TripDetails", { tripId: item.id })
+                navigation.navigate("RideDetailsScreen", { rideId: item.id })
               }
             >
               <View>
@@ -156,14 +146,17 @@ export default function PassengerDashboardScreen({ navigation }) {
         {/* Book New Ride Button */}
         <TouchableOpacity
           style={styles.bookBtn}
-          onPress={() => {
-            navigation.navigate("BookRide");
-            // For testing, you can add a test ride after booking
-            // addTestRide();
-          }}
+          // This starts the passenger booking flow!
+          onPress={() => navigation.navigate("BookRide")}
         >
           <MaterialIcons name="add-circle-outline" size={22} color="#fff" />
           <Text style={styles.bookBtnText}>Book New Ride</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.goHomeBtn}
+          onPress={() => navigation.navigate("Home")}
+        >
+          <Text style={styles.goHomeBtnText}>Go to Home</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -277,5 +270,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
     marginLeft: 9,
+  },
+  goHomeBtn: {
+    marginTop: 20,
+    backgroundColor: "#43cea2",
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 12,
+    alignSelf: "center",
+    elevation: 3, // optional shadow for better button look
+  },
+  goHomeBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+    letterSpacing: 0.5, // for nicer text spacing
   },
 });

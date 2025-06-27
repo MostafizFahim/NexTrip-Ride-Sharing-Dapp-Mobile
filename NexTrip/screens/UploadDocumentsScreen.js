@@ -6,12 +6,19 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 
-// For now, we'll just simulate uploading (no actual file picker)
 const { width } = Dimensions.get("window");
+
+// Document fields for easy mapping/extension
+const DOCUMENTS = [
+  { key: "license", label: "Driving License" },
+  { key: "nid", label: "NID / Passport" },
+  { key: "vehiclePaper", label: "Vehicle Papers" },
+];
 
 export default function UploadDocumentsScreen({ navigation }) {
   const [uploaded, setUploaded] = useState({
@@ -20,18 +27,25 @@ export default function UploadDocumentsScreen({ navigation }) {
     vehiclePaper: false,
   });
 
-  const handleUpload = (doc) => {
-    setUploaded((u) => ({ ...u, [doc]: true }));
-    alert(`${doc.charAt(0).toUpperCase() + doc.slice(1)} uploaded!`);
+  const handleUpload = (docKey) => {
+    setUploaded((prev) => ({ ...prev, [docKey]: true }));
+    Alert.alert(
+      "Success!",
+      `${DOCUMENTS.find((d) => d.key === docKey).label} uploaded.`
+    );
   };
 
   const handleSubmit = () => {
     if (!uploaded.license || !uploaded.nid || !uploaded.vehiclePaper) {
-      alert("Please upload all required documents.");
+      Alert.alert("Incomplete", "Please upload all required documents.");
       return;
     }
-    alert("All documents uploaded successfully!");
-    navigation.goBack();
+    Alert.alert("Submitted!", "All documents uploaded successfully.", [
+      {
+        text: "Continue",
+        onPress: () => navigation.replace("DriverDashboard"),
+      },
+    ]);
   };
 
   return (
@@ -44,21 +58,14 @@ export default function UploadDocumentsScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Upload Documents</Text>
 
-        <DocUploadCard
-          label="Driving License"
-          uploaded={uploaded.license}
-          onPress={() => handleUpload("license")}
-        />
-        <DocUploadCard
-          label="NID / Passport"
-          uploaded={uploaded.nid}
-          onPress={() => handleUpload("nid")}
-        />
-        <DocUploadCard
-          label="Vehicle Papers"
-          uploaded={uploaded.vehiclePaper}
-          onPress={() => handleUpload("vehiclePaper")}
-        />
+        {DOCUMENTS.map((doc) => (
+          <DocUploadCard
+            key={doc.key}
+            label={doc.label}
+            uploaded={uploaded[doc.key]}
+            onPress={() => handleUpload(doc.key)}
+          />
+        ))}
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
           <LinearGradient
@@ -85,8 +92,16 @@ function DocUploadCard({ label, uploaded, onPress }) {
         color={uploaded ? "#43cea2" : "#185a9d"}
       />
       <Text style={styles.docLabel}>{label}</Text>
-      <TouchableOpacity style={styles.docBtn} onPress={onPress}>
-        <Text style={styles.docBtnText}>
+      <TouchableOpacity
+        style={[styles.docBtn, uploaded && { backgroundColor: "#e7f9f4" }]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={
+          uploaded ? `${label} already uploaded` : `Upload ${label}`
+        }
+        disabled={uploaded}
+      >
+        <Text style={[styles.docBtnText, uploaded && { color: "#43cea2" }]}>
           {uploaded ? "Uploaded" : "Upload"}
         </Text>
       </TouchableOpacity>

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useUser } from "../components/UserContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -18,10 +19,25 @@ export default function SplashScreen({ navigation }) {
 
   useEffect(() => {
     if (!loading) {
-      // Add a small delay so splash screen is visible for at least 2 seconds
       const timer = setTimeout(() => {
-        navigation.replace(user ? "Home" : "Login");
-      }, 2000); // 2000 ms = 2 seconds
+        if (user) {
+          switch (user.role) {
+            case "admin":
+              navigation.replace("Admin");
+              break;
+            case "driver":
+              navigation.replace("Driver");
+              break;
+            case "passenger":
+              navigation.replace("PassengerDashboard");
+              break;
+            default:
+              navigation.replace("SelectRole");
+          }
+        } else {
+          navigation.replace("Onboarding");
+        }
+      }, 1800);
 
       return () => clearTimeout(timer);
     }

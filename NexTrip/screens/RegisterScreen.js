@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useUser } from "../components/UserContext";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 
@@ -19,19 +19,30 @@ const { width } = Dimensions.get("window");
 
 export default function RegisterScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { login, loading: userLoading } = useUser();
 
+  // Get initial role from params (if any)
+  const initialRole = route.params?.role || "Passenger";
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    role: "Passenger",
+    role: initialRole,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Update role if changed from SelectRoleScreen (e.g., deep nav)
+  useEffect(() => {
+    if (route.params?.role && route.params.role !== form.role) {
+      setForm((f) => ({ ...f, role: route.params.role }));
+    }
+    // eslint-disable-next-line
+  }, [route.params?.role]);
 
   const handleRegister = async () => {
     setError("");
@@ -52,7 +63,18 @@ export default function RegisterScreen() {
         photo: null,
       });
       setLoading(false);
-      navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+
+      // Navigate based on role
+      if (form.role === "Passenger") {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "PassengerDashboard" }],
+        });
+      } else if (form.role === "Driver") {
+        navigation.reset({ index: 0, routes: [{ name: "Driver" }] });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+      }
     } catch (e) {
       setLoading(false);
       setError("Registration failed. Please try again.");
