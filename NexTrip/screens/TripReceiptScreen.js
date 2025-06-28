@@ -44,7 +44,6 @@ const ride = {
 };
 
 export default function TripReceiptScreen({ navigation }) {
-  // fallback for coordinates
   const pickupCoord = ride.pickupCoord || {
     latitude: 23.8103,
     longitude: 90.4125,
@@ -52,6 +51,22 @@ export default function TripReceiptScreen({ navigation }) {
   const dropoffCoord = ride.dropoffCoord || {
     latitude: 23.7921507,
     longitude: 90.4072755,
+  };
+
+  // ---- USE RESET TO RETURN TO HOME TAB ----
+  const handleDone = () => {
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: "PassengerFlow",
+          state: {
+            index: 0,
+            routes: [{ name: "Home" }],
+          },
+        },
+      ],
+    });
   };
 
   return (
@@ -165,10 +180,7 @@ export default function TripReceiptScreen({ navigation }) {
         </View>
 
         {/* Done Button */}
-        <TouchableOpacity
-          style={styles.doneBtn}
-          onPress={() => navigation.replace("Home")}
-        >
+        <TouchableOpacity style={styles.doneBtn} onPress={handleDone}>
           <LinearGradient
             colors={["#43cea2", "#185a9d"]}
             style={styles.btnGradient}

@@ -11,12 +11,12 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons, Ionicons, Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useUser } from "../components/UserContext"; // Import your user hook
+import { useUser } from "../components/UserContext";
 
 export default function SettingsScreen({ navigation }) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
-  const { logout } = useUser(); // Get logout from context
+  const { user, logout, updateRole } = useUser();
 
   useEffect(() => {
     (async () => {
@@ -56,8 +56,8 @@ export default function SettingsScreen({ navigation }) {
           style: "destructive",
           onPress: async () => {
             try {
-              await logout(); // clear user data from context and AsyncStorage
-              await AsyncStorage.clear(); // clear all AsyncStorage data (optional)
+              await logout();
+              await AsyncStorage.clear();
               navigation.reset({
                 index: 0,
                 routes: [{ name: "Onboarding" }],
@@ -71,14 +71,113 @@ export default function SettingsScreen({ navigation }) {
     );
   };
 
+  // Role switching functions
+  const switchToPassenger = () => {
+    updateRole("passenger");
+    Alert.alert("Role Changed", "You are now a Passenger");
+  };
+
+  const switchToDriver = () => {
+    updateRole("driver");
+    Alert.alert("Role Changed", "You are now a Driver");
+  };
+
+  const switchToAdmin = () => {
+    updateRole("admin");
+    Alert.alert("Role Changed", "You are now an Admin");
+  };
+
   return (
     <LinearGradient colors={["#43cea2", "#185a9d"]} style={styles.bg}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Settings</Text>
 
-        {/* Account Section */}
+        {/* Account Settings Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>Account Settings</Text>
+
+          {user && (
+            <View style={styles.roleSection}>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>
+                  Current Role:{" "}
+                  <Text style={styles.roleHighlight}>{user.role}</Text>
+                </Text>
+              </View>
+
+              <View style={styles.roleButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    user.role === "passenger" && styles.activeRoleButton,
+                  ]}
+                  onPress={switchToPassenger}
+                  disabled={user.role === "passenger"}
+                >
+                  <Ionicons
+                    name="person"
+                    size={20}
+                    color={user.role === "passenger" ? "#fff" : "#43cea2"}
+                  />
+                  <Text
+                    style={[
+                      styles.roleButtonText,
+                      user.role === "passenger" && styles.activeRoleButtonText,
+                    ]}
+                  >
+                    Passenger
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    user.role === "driver" && styles.activeRoleButton,
+                  ]}
+                  onPress={switchToDriver}
+                  disabled={user.role === "driver"}
+                >
+                  <Ionicons
+                    name="car"
+                    size={20}
+                    color={user.role === "driver" ? "#fff" : "#185a9d"}
+                  />
+                  <Text
+                    style={[
+                      styles.roleButtonText,
+                      user.role === "driver" && styles.activeRoleButtonText,
+                    ]}
+                  >
+                    Driver
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    user.role === "admin" && styles.activeRoleButton,
+                  ]}
+                  onPress={switchToAdmin}
+                  disabled={user.role === "admin"}
+                >
+                  <Ionicons
+                    name="shield"
+                    size={20}
+                    color={user.role === "admin" ? "#fff" : "#ff6b6b"}
+                  />
+                  <Text
+                    style={[
+                      styles.roleButtonText,
+                      user.role === "admin" && styles.activeRoleButtonText,
+                    ]}
+                  >
+                    Admin
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           <TouchableOpacity
             style={styles.item}
             onPress={() => navigation.navigate("EditProfile")}
@@ -88,6 +187,7 @@ export default function SettingsScreen({ navigation }) {
             <Feather name="user" size={20} color="#185a9d" />
             <Text style={styles.itemText}>Edit Profile</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.item}
             onPress={() => navigation.navigate("ChangePassword")}
@@ -102,6 +202,23 @@ export default function SettingsScreen({ navigation }) {
         {/* App Preferences Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Preferences</Text>
+
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => navigation.navigate("NotificationsSettings")}
+          >
+            <Ionicons name="notifications-outline" size={20} color="#43cea2" />
+            <Text style={styles.itemText}>Notification Settings</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => navigation.navigate("LanguageSettings")}
+          >
+            <Ionicons name="language" size={20} color="#185a9d" />
+            <Text style={styles.itemText}>Language Settings</Text>
+          </TouchableOpacity>
+
           <View style={styles.itemRow}>
             <Ionicons name="notifications-outline" size={20} color="#43cea2" />
             <Text style={styles.itemText}>Enable Notifications</Text>
@@ -113,6 +230,7 @@ export default function SettingsScreen({ navigation }) {
               style={{ marginLeft: "auto" }}
             />
           </View>
+
           <View style={styles.itemRow}>
             <Ionicons name="moon-outline" size={20} color="#185a9d" />
             <Text style={styles.itemText}>Dark Mode</Text>
@@ -173,6 +291,7 @@ export default function SettingsScreen({ navigation }) {
             <MaterialIcons name="help-outline" size={20} color="#43cea2" />
             <Text style={styles.itemText}>Help & Support</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.item}
             onPress={() => navigation.navigate("ContactUs")}
@@ -181,7 +300,10 @@ export default function SettingsScreen({ navigation }) {
             <Text style={styles.itemText}>Contact Us</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.item}>
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => navigation.navigate("About")}
+          >
             <Feather name="info" size={20} color="#185a9d" />
             <Text style={styles.itemText}>About NexTrip</Text>
           </TouchableOpacity>
@@ -258,5 +380,59 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  roleSection: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: "#f0f9f7",
+    borderRadius: 10,
+  },
+  roleBadge: {
+    backgroundColor: "#e3f2fd",
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  roleText: {
+    fontWeight: "bold",
+    fontSize: 15,
+    color: "#185a9d",
+  },
+  roleHighlight: {
+    color: "#43cea2",
+    fontWeight: "bold",
+  },
+  roleButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  roleButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 5,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    backgroundColor: "#fff",
+  },
+  activeRoleButton: {
+    backgroundColor: "#43cea2",
+    borderColor: "#43cea2",
+  },
+  roleButtonText: {
+    marginLeft: 5,
+    fontWeight: "500",
+    fontSize: 14,
+    color: "#185a9d",
+  },
+  activeRoleButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

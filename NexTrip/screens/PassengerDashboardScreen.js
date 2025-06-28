@@ -23,7 +23,7 @@ const defaultUser = {
     dropoff: "Dhanmondi 27",
     time: "Today 5:30 PM",
     status: "Scheduled",
-    rideId: "101", // Add rideId if you want to track
+    rideId: "101",
   },
 };
 
@@ -85,38 +85,49 @@ export default function PassengerDashboardScreen({ navigation }) {
             <Feather name="edit-3" size={18} color="#43cea2" />
           </TouchableOpacity>
         </View>
+
         {/* Next Ride Card */}
-        <View style={styles.nextRideCard}>
-          <Text style={styles.cardTitle}>Your Next Ride</Text>
-          <View style={styles.rideRow}>
-            <MaterialIcons name="my-location" size={18} color="#43cea2" />
-            <Text style={styles.rideLabel}>Pickup: </Text>
-            <Text style={styles.rideValue}>{user.nextRide.pickup}</Text>
+        {user.nextRide ? (
+          <View style={styles.nextRideCard}>
+            <Text style={styles.cardTitle}>Your Next Ride</Text>
+            <View style={styles.rideRow}>
+              <MaterialIcons name="my-location" size={18} color="#43cea2" />
+              <Text style={styles.rideLabel}>Pickup: </Text>
+              <Text style={styles.rideValue}>
+                {user.nextRide?.pickup || "Not scheduled"}
+              </Text>
+            </View>
+            <View style={styles.rideRow}>
+              <MaterialIcons name="location-on" size={18} color="#185a9d" />
+              <Text style={styles.rideLabel}>Dropoff: </Text>
+              <Text style={styles.rideValue}>
+                {user.nextRide?.dropoff || "Not scheduled"}
+              </Text>
+            </View>
+            <View style={styles.rideRow}>
+              <FontAwesome5 name="clock" size={15} color="#00c853" />
+              <Text style={styles.rideLabel}>Time: </Text>
+              <Text style={[styles.rideValue, { color: "#00c853" }]}>
+                {user.nextRide?.time || "--"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              // Track ride in progress
+              onPress={() =>
+                navigation.navigate("RideInProgressScreen", {
+                  rideId: user.nextRide?.rideId || "scheduled",
+                })
+              }
+            >
+              <Text style={styles.primaryButtonText}>Track Ride</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.rideRow}>
-            <MaterialIcons name="location-on" size={18} color="#185a9d" />
-            <Text style={styles.rideLabel}>Dropoff: </Text>
-            <Text style={styles.rideValue}>{user.nextRide.dropoff}</Text>
+        ) : (
+          <View style={styles.nextRideCard}>
+            <Text style={styles.cardTitle}>No Next Ride Scheduled</Text>
           </View>
-          <View style={styles.rideRow}>
-            <FontAwesome5 name="clock" size={15} color="#00c853" />
-            <Text style={styles.rideLabel}>Time: </Text>
-            <Text style={[styles.rideValue, { color: "#00c853" }]}>
-              {user.nextRide.time}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            // Track ride in progress
-            onPress={() =>
-              navigation.navigate("RideInProgressScreen", {
-                rideId: user.nextRide.rideId || "scheduled",
-              })
-            }
-          >
-            <Text style={styles.primaryButtonText}>Track Ride</Text>
-          </TouchableOpacity>
-        </View>
+        )}
 
         {/* Ride History */}
         <Text style={styles.sectionTitle}>Recent Rides</Text>
@@ -278,12 +289,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     borderRadius: 12,
     alignSelf: "center",
-    elevation: 3, // optional shadow for better button look
+    elevation: 3,
   },
   goHomeBtnText: {
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
-    letterSpacing: 0.5, // for nicer text spacing
+    letterSpacing: 0.5,
   },
 });

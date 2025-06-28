@@ -1,57 +1,74 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+// components/UserContext.js
+import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Key for AsyncStorage
-const USER_KEY = "NEXTRIP_USER_DATA";
+export const UserContext = createContext();
 
-// 1. Create Context
-const UserContext = createContext();
-
-// 2. Provider
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Load user from AsyncStorage when the app starts
   useEffect(() => {
-    (async () => {
+    const loadUser = async () => {
       try {
-        const saved = await AsyncStorage.getItem(USER_KEY);
-        if (saved) setUser(JSON.parse(saved));
-      } catch (e) {
-        console.warn("Failed to load user", e);
+        const storedUser = await AsyncStorage.getItem("user");
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.error("Failed to load user", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    })();
+    };
+    loadUser();
   }, []);
 
-  const saveUser = async (userData) => {
-    setUser(userData);
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
-  };
-
+  // Login: Set user in state and AsyncStorage
   const login = async (userData) => {
-    await saveUser(userData);
+    setUser(userData);
+    try {
+      await AsyncStorage.setItem("user", JSON.stringify(userData));
+    } catch (e) {
+      console.error("Failed to save user", e);
+    }
   };
 
+  // Logout: Clear user from state and AsyncStorage
   const logout = async () => {
-    setUser(null);
-    await AsyncStorage.removeItem(USER_KEY);
+    setUser(null); // Immediate UI update
+    try {
+      await AsyncStorage.removeItem("user");
+      // Optional: also remove other related keys
+      await AsyncStorage.removeItem("userProfile");
+      await AsyncStorage.removeItem("currentRole");
+    } catch (e) {
+      console.error("Failed to remove user", e);
+    }
+    // Don't do navigation here! RootNavigator will detect user == null.
   };
 
-  const updateProfile = async (updates) => {
-    const updated = { ...user, ...updates };
-    await saveUser(updated);
+  // Update role: Safely update user's role in state and storage
+  const updateRole = async (newRole) => {
+    if (!user) return;
+    const updatedUser = { ...user, role: newRole };
+    setUser(updatedUser);
+    try {
+      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+    } catch (e) {
+      console.error("Failed to update user role", e);
+    }
   };
 
   return (
     <UserContext.Provider
       value={{
         user,
-        isLoggedIn: !!user,
         loading,
         login,
         logout,
-        updateProfile,
+        updateRole,
       }}
     >
       {children}
@@ -59,7 +76,5 @@ export function UserProvider({ children }) {
   );
 }
 
-// 3. Custom hook for easy access
-export function useUser() {
-  return useContext(UserContext);
-}
+// Custom hook for easy usage
+export const useUser = () => React.useContext(UserContext);

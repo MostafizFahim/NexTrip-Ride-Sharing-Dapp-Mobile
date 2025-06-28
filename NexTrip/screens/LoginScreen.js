@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Dimensions,
   Platform,
   KeyboardAvoidingView,
+  Animated,
+  Easing,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -18,8 +20,10 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useUser } from "../components/UserContext";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+const isSmallScreen = height < 700;
 
 export default function LoginScreen() {
   const navigation = useNavigation();
@@ -28,7 +32,61 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isFocused, setIsFocused] = useState({ email: false, password: false });
 
+  // Animation values
+  const cardAnim = useRef(new Animated.Value(0)).current;
+  const inputAnim = useRef(new Animated.Value(0)).current;
+  const socialAnim = useRef(new Animated.Value(0)).current;
+  const errorAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Entry animations
+    Animated.parallel([
+      Animated.spring(cardAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 60,
+        useNativeDriver: true,
+      }),
+      Animated.stagger(100, [
+        Animated.spring(inputAnim, {
+          toValue: 1,
+          friction: 10,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+        Animated.spring(socialAnim, {
+          toValue: 1,
+          friction: 10,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
+
+  useEffect(() => {
+    // Error animation
+    if (error) {
+      Animated.sequence([
+        Animated.timing(errorAnim, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(errorAnim, {
+          toValue: 0,
+          duration: 3000,
+          delay: 2000,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setError(""));
+    }
+  }, [error]);
+
+  // ----------- LOGIN LOGIC -----------
   const handleLogin = async () => {
     setError("");
     if (!form.email || !form.password) {
@@ -37,19 +95,48 @@ export default function LoginScreen() {
     }
     setLoading(true);
 
-    // DEMO LOGIN: Accept only certain domains; replace with backend call later
-    if (
-      form.email.endsWith("@admin.com") ||
-      form.email.endsWith("@driver.com") ||
-      form.email.endsWith("@user.com")
-    ) {
-      const role = form.email.endsWith("@admin.com")
-        ? "admin"
-        : form.email.endsWith("@driver.com")
-        ? "driver"
-        : "passenger";
+    try {
+      // 1. Check for registered users in AsyncStorage
+      const usersRaw = await AsyncStorage.getItem("registeredUsers");
+      const users = usersRaw ? JSON.parse(usersRaw) : [];
 
-      try {
+      // 2. Try to find user by email
+      const user = users.find(
+        (u) =>
+          u.email.toLowerCase() === form.email.trim().toLowerCase() &&
+          u.password === form.password
+      );
+
+      if (user) {
+        // Found registered user
+        await login({
+          ...user,
+          email: user.email.toLowerCase(),
+        });
+        setLoading(false);
+
+        // Navigate based on role
+        if (user.role === "passenger" || user.role === "Passenger") {
+          navigation.reset({ index: 0, routes: [{ name: "Passenger" }] });
+        } else if (user.role === "driver" || user.role === "Driver") {
+          navigation.reset({ index: 0, routes: [{ name: "Driver" }] });
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: "Home" }] });
+        }
+        return;
+      }
+
+      // 3. Fallback: allow DEMO LOGINS for admin/driver domains
+      if (
+        form.email.endsWith("@admin.com") ||
+        form.email.endsWith("@driver.com") ||
+        form.email.endsWith("@user.com")
+      ) {
+        const role = form.email.endsWith("@admin.com")
+          ? "admin"
+          : form.email.endsWith("@driver.com")
+          ? "driver"
+          : "passenger";
         await login({
           name: form.email.split("@")[0].replace(/^\w/, (c) => c.toUpperCase()),
           email: form.email,
@@ -58,79 +145,145 @@ export default function LoginScreen() {
         });
         setLoading(false);
         navigation.reset({ index: 0, routes: [{ name: "Home" }] });
-      } catch (e) {
-        setLoading(false);
-        setError("Login failed. Please try again.");
+        return;
       }
-    } else {
+
       setLoading(false);
-      setError("Invalid credentials. Try demo@user.com or demo@driver.com.");
+      setError(
+        "Invalid credentials. Use demo@user.com, demo@driver.com or sign up first."
+      );
+    } catch (e) {
+      setLoading(false);
+      setError("Login failed. Please try again.");
     }
+  };
+
+  const handleFocus = (field) => {
+    setIsFocused({ ...isFocused, [field]: true });
+  };
+
+  const handleBlur = (field) => {
+    setIsFocused({ ...isFocused, [field]: false });
   };
 
   return (
     <LinearGradient
-      colors={["#43cea2", "#185a9d"]}
-      start={[0, 0]}
-      end={[1, 1]}
+      colors={["#e6f7ff", "#c2e9fb", "#a1c4fd"]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
       style={styles.container}
     >
+      {/* Decorative Elements */}
+      <View style={styles.circle}></View>
+      <View style={[styles.circle, styles.circle2]}></View>
+
       <KeyboardAvoidingView
         style={styles.avoiding}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.card}>
-          <Text style={styles.title}>NexTrip Login</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
-
-          {/* Social Login Row */}
-          <View style={styles.socialRow}>
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={() => alert("Google login coming soon!")}
-            >
-              <AntDesign name="google" size={24} color="#EA4335" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={() => alert("Facebook login coming soon!")}
-            >
-              <FontAwesome name="facebook" size={24} color="#3b5998" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={() => alert("X login coming soon!")}
-            >
-              <AntDesign name="twitter" size={24} color="#1da1f2" />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.orText}>— OR —</Text>
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              opacity: cardAnim,
+              transform: [
+                {
+                  translateY: cardAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
 
           {/* Email Input */}
-          <TextInput
-            placeholder="Email"
-            style={styles.input}
-            placeholderTextColor="#888"
-            value={form.email}
-            onChangeText={(text) => setForm((f) => ({ ...f, email: text }))}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!loading && !userLoading}
-          />
+          <Animated.View
+            style={[
+              styles.inputContainer,
+              {
+                opacity: inputAnim,
+                transform: [
+                  {
+                    translateX: inputAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-30, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                isFocused.email && styles.iconContainerFocused,
+              ]}
+            >
+              <AntDesign
+                name="user"
+                size={20}
+                color={isFocused.email ? "#43cea2" : "#777"}
+              />
+            </View>
+            <TextInput
+              placeholder="Email"
+              placeholderTextColor="#888"
+              style={[styles.input, isFocused.email && styles.inputFocused]}
+              value={form.email}
+              onChangeText={(text) => setForm((f) => ({ ...f, email: text }))}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!loading && !userLoading}
+              onFocus={() => handleFocus("email")}
+              onBlur={() => handleBlur("email")}
+            />
+          </Animated.View>
 
           {/* Password Input */}
-          <View style={{ width: "100%" }}>
+          <Animated.View
+            style={[
+              styles.inputContainer,
+              {
+                opacity: inputAnim,
+                transform: [
+                  {
+                    translateX: inputAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                isFocused.password && styles.iconContainerFocused,
+              ]}
+            >
+              <AntDesign
+                name="lock"
+                size={20}
+                color={isFocused.password ? "#43cea2" : "#777"}
+              />
+            </View>
             <TextInput
               placeholder="Password"
-              style={styles.input}
               placeholderTextColor="#888"
+              style={[styles.input, isFocused.password && styles.inputFocused]}
               value={form.password}
               onChangeText={(text) =>
                 setForm((f) => ({ ...f, password: text }))
               }
               secureTextEntry={!showPassword}
               editable={!loading && !userLoading}
+              onFocus={() => handleFocus("password")}
+              onBlur={() => handleBlur("password")}
             />
             <TouchableOpacity
               onPress={() => setShowPassword((p) => !p)}
@@ -140,13 +293,35 @@ export default function LoginScreen() {
               <MaterialCommunityIcons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={22}
-                color="#888"
+                color={isFocused.password ? "#43cea2" : "#777"}
               />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
+
+          {/* Forgot Password */}
+          <TouchableOpacity style={styles.forgotPassword}>
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
 
           {/* Error Message */}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <Animated.View
+            style={[
+              styles.errorContainer,
+              {
+                opacity: errorAnim,
+                transform: [
+                  {
+                    scale: errorAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.9, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          </Animated.View>
 
           {/* Sign In Button */}
           <TouchableOpacity
@@ -160,8 +335,8 @@ export default function LoginScreen() {
           >
             <LinearGradient
               colors={["#43cea2", "#185a9d"]}
-              start={[0, 0]}
-              end={[1, 0]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
               style={styles.gradientBtn}
             >
               {loading || userLoading ? (
@@ -171,7 +346,7 @@ export default function LoginScreen() {
                   color="#fff"
                   size={18}
                   message="Signing in..."
-                  textStyle={{ color: "#fff", marginLeft: 6 }}
+                  textStyle={{ color: "#fff", marginLeft: 10, fontSize: 16 }}
                 />
               ) : (
                 <Text style={styles.signInBtnText}>Sign In</Text>
@@ -179,36 +354,79 @@ export default function LoginScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine}></View>
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine}></View>
+          </View>
+
+          {/* Social Login Row */}
+          <Animated.View
+            style={[
+              styles.socialRow,
+              {
+                opacity: socialAnim,
+                transform: [
+                  {
+                    translateY: socialAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [30, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => alert("Google login coming soon!")}
+            >
+              <LinearGradient
+                colors={["#FFFFFF", "#F5F5F5"]}
+                style={styles.socialBtnInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <AntDesign name="google" size={24} color="#EA4335" />
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => alert("Facebook login coming soon!")}
+            >
+              <LinearGradient
+                colors={["#FFFFFF", "#F5F5F5"]}
+                style={styles.socialBtnInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <FontAwesome name="facebook" size={24} color="#3b5998" />
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialBtn}
+              onPress={() => alert("X login coming soon!")}
+            >
+              <LinearGradient
+                colors={["#FFFFFF", "#F5F5F5"]}
+                style={styles.socialBtnInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <AntDesign name="twitter" size={24} color="#1da1f2" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+
           {/* Sign Up Link */}
           <View style={styles.signUpRow}>
-            <Text style={styles.signUpText}>New to NexTrip?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("SelectRole")}>
+            <Text style={styles.signUpText}>Don't have an account?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
               <Text style={styles.signUpLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
-
-          {/* DEV QUICK LINKS */}
-          {/* <View style={{ marginTop: 16, alignItems: "center" }}>
-            <TouchableOpacity
-              onPress={() => navigation.replace("Home")}
-              style={styles.devBtn}
-            >
-              <Text style={styles.devBtnText}>Go to Home</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.replace("PassengerDashboard")}
-              style={styles.devBtn}
-            >
-              <Text style={styles.devBtnText}>Go to Passenger Dashboard</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.replace("Driver")}
-              style={styles.devBtn}
-            >
-              <Text style={styles.devBtnText}>Go to Driver Dashboard</Text>
-            </TouchableOpacity>
-          </View> */}
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -226,123 +444,202 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
+    paddingTop: Platform.OS === "ios" ? 20 : 0,
+  },
+  circle: {
+    position: "absolute",
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: "rgba(67,206,162,0.1)",
+    top: -100,
+    left: -60,
+  },
+  circle2: {
+    top: undefined,
+    bottom: -140,
+    left: undefined,
+    right: -60,
+    backgroundColor: "rgba(24,90,157,0.1)",
   },
   card: {
     width: width > 400 ? 360 : "90%",
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 32,
-    paddingHorizontal: 22,
+    backgroundColor: "#ffffff",
+    borderRadius: 28,
+    paddingVertical: 35, // Reduced from 40
+    paddingHorizontal: 30,
     alignItems: "center",
-    elevation: 5,
-    shadowColor: "#222",
-    shadowOpacity: 0.14,
-    shadowOffset: { width: 0, height: 5 },
+    elevation: 12,
+    shadowColor: "rgba(0,0,0,0.1)",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "900",
     color: "#185a9d",
-    marginBottom: 3,
-    letterSpacing: 1,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
     color: "#43cea2",
-    marginBottom: 22,
+    marginBottom: 30,
     fontWeight: "600",
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
-  socialRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  socialBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#f5f5f5",
-    borderWidth: 1,
-    borderColor: "#eee",
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 7,
-    elevation: Platform.OS === "android" ? 2 : 0,
-  },
-  orText: {
-    color: "#888",
-    marginBottom: 10,
-    marginTop: 4,
-    fontSize: 16,
-    textAlign: "center",
-    letterSpacing: 1,
-  },
-  input: {
+  inputContainer: {
     width: "100%",
-    height: 48,
-    backgroundColor: "#f6f6f6",
+    marginBottom: 20,
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconContainer: {
+    position: "absolute",
+    left: 16,
+    zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 15,
-    fontSize: 16,
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#e0e0e0",
-    color: "#222",
+  },
+  iconContainerFocused: {
+    backgroundColor: "#f0f9ff",
+    borderColor: "#43cea2",
+  },
+  input: {
+    flex: 1,
+    height: 52,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 16,
+    paddingLeft: 60,
+    paddingRight: 50,
+    fontSize: 16,
+    borderWidth: 1.5,
+    borderColor: "#e0e0e0",
+    color: "#333",
+  },
+  inputFocused: {
+    borderColor: "#43cea2",
+    backgroundColor: "#ffffff",
+    shadowColor: "rgba(67, 206, 162, 0.3)",
+    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
   },
   eyeIcon: {
     position: "absolute",
-    right: 18,
-    top: 14,
+    right: 20,
+    zIndex: 10,
+  },
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginTop: -10,
+    marginBottom: 15,
+  },
+  forgotPasswordText: {
+    color: "#43cea2",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  errorContainer: {
+    width: "100%",
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: "#ffebee",
+    borderRadius: 12,
   },
   errorText: {
     color: "#c62828",
-    marginBottom: 10,
     fontWeight: "600",
     textAlign: "center",
+    fontSize: 14,
   },
   signInBtn: {
     width: "100%",
-    marginTop: 8,
-    borderRadius: 12,
+    marginTop: 10,
+    borderRadius: 16,
     overflow: "hidden",
+    elevation: 5,
+    shadowColor: "rgba(24, 90, 157, 0.3)",
+    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
   },
   gradientBtn: {
-    paddingVertical: 13,
+    paddingVertical: 16,
     alignItems: "center",
-    borderRadius: 12,
+    justifyContent: "center",
+    borderRadius: 16,
+    flexDirection: "row",
   },
   signInBtnText: {
     color: "#fff",
     fontSize: 18,
-    fontWeight: "bold",
-    letterSpacing: 1,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 25,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e0e0e0",
+  },
+  dividerText: {
+    color: "#888",
+    fontSize: 14,
+    fontWeight: "500",
+    marginHorizontal: 12,
+  },
+  socialRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 25,
+  },
+  socialBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    overflow: "hidden",
+    marginHorizontal: 8,
+    elevation: 4,
+    shadowColor: "rgba(0,0,0,0.1)",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+  },
+  socialBtnInner: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   signUpRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 16,
+    marginTop: 10,
   },
   signUpText: {
-    color: "#444",
+    color: "#666",
     fontSize: 15,
+    fontWeight: "500",
   },
   signUpLink: {
-    marginLeft: 7,
+    marginLeft: 8,
     color: "#185a9d",
-    fontWeight: "bold",
+    fontWeight: "700",
     fontSize: 16,
-  },
-  devBtn: {
-    marginVertical: 3,
-    backgroundColor: "#185a9d",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 22,
-  },
-  devBtnText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 15,
   },
 });

@@ -16,6 +16,7 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { FontAwesome5 } from "@expo/vector-icons";
+import { useUser } from "../components/UserContext"; // Import useUser
 
 const { width } = Dimensions.get("window");
 
@@ -31,6 +32,7 @@ const defaultUser = {
 
 export default function ProfileScreen({ navigation }) {
   const [user, setUser] = useState(defaultUser);
+  const { logout } = useUser();
 
   // Load user data from AsyncStorage on mount/focus
   useEffect(() => {
@@ -63,9 +65,13 @@ export default function ProfileScreen({ navigation }) {
           text: "Logout",
           style: "destructive",
           onPress: async () => {
-            await AsyncStorage.removeItem("userProfile");
-            await AsyncStorage.removeItem("user");
-            navigation.replace("Login");
+            try {
+              await AsyncStorage.removeItem("userProfile");
+              await AsyncStorage.removeItem("user");
+              logout(); // Just call logout, no navigation needed
+            } catch (e) {
+              logout(); // fallback, just clear context
+            }
           },
         },
       ],

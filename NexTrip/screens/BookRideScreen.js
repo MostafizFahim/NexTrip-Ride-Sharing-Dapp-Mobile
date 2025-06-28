@@ -323,6 +323,22 @@ export default function BookRideScreen({ navigation }) {
               )}
             </LinearGradient>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#185a9d",
+              borderRadius: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 32,
+              marginTop: 24,
+              alignSelf: "center",
+              elevation: 3,
+            }}
+            onPress={() => navigation.navigate("Home")}
+          >
+            <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+              Go to Home
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>

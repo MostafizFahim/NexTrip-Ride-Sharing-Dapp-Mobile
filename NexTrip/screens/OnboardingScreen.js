@@ -5,16 +5,16 @@ import {
   StyleSheet,
   Dimensions,
   TouchableOpacity,
-  Image,
   Animated,
   PanResponder,
   AccessibilityInfo,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import LottieView from "lottie-react-native";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 const slides = [
   {
@@ -22,30 +22,43 @@ const slides = [
     title: "Welcome to NexTrip",
     description:
       "A secure, blockchain-powered ride-sharing app for your city. Book rides, pay seamlessly, and trust every trip.",
-    image: require("../assets/onboard-1.png"),
-    icon: <MaterialIcons name="security" size={38} color="#43cea2" />,
+    lottie: require("../assets/onboard-1-lottie.json"),
+    icon: <Ionicons name="shield-checkmark" size={50} color="#43cea2" />,
+    gradient: ["#43cea2", "#185a9d"],
   },
   {
     key: "two",
     title: "Blockchain Transparency",
     description:
       "All rides are recorded on a tamper-proof ledger. Enjoy real privacy, data control, and true fairness.",
-    image: require("../assets/onboard-2.png"),
-    icon: <FontAwesome5 name="lock" size={36} color="#185a9d" />,
+    lottie: require("../assets/onboard-2-lottie.json"),
+    icon: <Ionicons name="lock-closed" size={50} color="#185a9d" />,
+    gradient: ["#185a9d", "#0a192f"],
   },
   {
     key: "three",
     title: "Seamless Payment",
     description:
       "Pay with cards, crypto, or NexTrip tokens. Fast, secure, and easy—every ride, every time.",
-    image: require("../assets/onboard-3.png"),
-    icon: <FontAwesome5 name="money-bill-wave" size={36} color="#43cea2" />,
+    lottie: require("../assets/onboard-3-lottie.json"),
+    icon: <Ionicons name="wallet" size={50} color="#43cea2" />,
+    gradient: ["#ff9966", "#ff5e62"],
   },
 ];
 
 export default function OnboardingScreen({ navigation }) {
   const [slide, setSlide] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Progress animation
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: (slide + 1) / slides.length,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [slide]);
 
   // Fade animation helper
   const fadeToSlide = (nextSlide) => {
@@ -93,7 +106,7 @@ export default function OnboardingScreen({ navigation }) {
   // Complete onboarding and navigate as per app flow
   const completeOnboarding = () => {
     markDone();
-    navigation.replace("Login");
+    navigation.replace("Login"); // Or "Login"
   };
 
   // Handle next button press
@@ -116,14 +129,28 @@ export default function OnboardingScreen({ navigation }) {
     );
   }, [slide]);
 
+  // Progress bar width interpolation
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
   return (
     <LinearGradient
-      colors={["#43cea2", "#185a9d"]}
+      colors={slides[slide].gradient}
       style={styles.bg}
       start={[0, 0]}
       end={[1, 1]}
     >
       <View style={styles.container} {...panResponder.panHandlers}>
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <Animated.View
+            style={[styles.progressBar, { width: progressWidth }]}
+          />
+        </View>
+
+        {/* Skip Button */}
         <TouchableOpacity
           accessible={true}
           accessibilityLabel="Skip onboarding"
@@ -135,38 +162,68 @@ export default function OnboardingScreen({ navigation }) {
         </TouchableOpacity>
 
         <Animated.View style={[styles.contentWrap, { opacity: fadeAnim }]}>
-          <View style={styles.imageWrap}>
-            {slides[slide].image ? (
-              <Image
-                source={slides[slide].image}
-                style={styles.image}
-                resizeMode="contain"
-                accessibilityIgnoresInvertColors={true}
-                accessible={true}
-                accessibilityLabel={slides[slide].title}
-              />
-            ) : (
-              slides[slide].icon
-            )}
+          {/* Floating Particles */}
+          <View style={styles.particle1} />
+          <View style={styles.particle2} />
+          <View style={styles.particle3} />
+
+          {/* Lottie Animation Container */}
+          <View style={styles.imageContainer}>
+            <Animated.View
+              style={[
+                styles.imageWrap,
+                {
+                  transform: [
+                    {
+                      translateY: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={["rgba(255,255,255,0.2)", "rgba(255,255,255,0.05)"]}
+                style={styles.imageBackground}
+                start={[0, 0]}
+                end={[1, 1]}
+              >
+                <LottieView
+                  source={slides[slide].lottie}
+                  autoPlay
+                  loop
+                  style={{ width: 160, height: 160 }}
+                  accessibilityLabel={slides[slide].title}
+                />
+              </LinearGradient>
+            </Animated.View>
+            {/* Icon Floating Badge */}
+            <View style={styles.iconBadge}>{slides[slide].icon}</View>
           </View>
 
           <Text style={styles.title} accessibilityRole="header">
             {slides[slide].title}
           </Text>
+
           <Text style={styles.desc}>{slides[slide].description}</Text>
 
+          {/* Dots Indicator */}
           <View style={styles.dotsRow} accessibilityRole="tablist" accessible>
             {slides.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === slide && styles.activeDot]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: i === slide }}
-                accessibilityLabel={`Slide ${i + 1} of ${slides.length}`}
-              />
+              <TouchableOpacity key={i} onPress={() => fadeToSlide(i)}>
+                <View
+                  style={[styles.dot, i === slide && styles.activeDot]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: i === slide }}
+                  accessibilityLabel={`Slide ${i + 1} of ${slides.length}`}
+                />
+              </TouchableOpacity>
             ))}
           </View>
 
+          {/* Next Button */}
           <TouchableOpacity
             accessible={true}
             accessibilityLabel={
@@ -189,38 +246,27 @@ export default function OnboardingScreen({ navigation }) {
               <Text style={styles.nextText}>
                 {slide === slides.length - 1 ? "Get Started" : "Next"}
               </Text>
+              <Ionicons
+                name="arrow-forward"
+                size={24}
+                color="#fff"
+                style={styles.arrowIcon}
+              />
             </LinearGradient>
           </TouchableOpacity>
-        </Animated.View>
 
-        {/* DEV QUICK LINKS: Visible for testing fast navigation */}
-        {/* <View style={{ marginTop: 16, alignItems: "center" }}>
-          <TouchableOpacity
-            onPress={() => navigation.replace("Register")}
-            style={styles.devBtn}
-          >
-            <Text style={styles.devBtnText}>Go to Register</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.replace("SelectRole")}
-            style={styles.devBtn}
-          >
-            <Text style={styles.devBtnText}>Go to Select Role</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.replace("Home")}
-            style={styles.devBtn}
-          >
-            <Text style={styles.devBtnText}>Go to Home</Text>
-          </TouchableOpacity>
-        </View> */}
+          {/* Swipe Hint */}
+          <Text style={styles.swipeHint}>Swipe left or right to navigate</Text>
+        </Animated.View>
       </View>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
+  bg: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 22,
@@ -228,105 +274,175 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  progressBarContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#fff",
+  },
   skipBtn: {
     position: "absolute",
     top: 50,
     right: 22,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 20,
   },
   skipText: {
-    color: "#e7f9f4",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
   contentWrap: {
     alignItems: "center",
+    width: "100%",
+  },
+  imageContainer: {
+    position: "relative",
+    marginBottom: 40,
+    marginTop: 20,
+  },
+  imageBackground: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   imageWrap: {
-    backgroundColor: "#fff",
-    borderRadius: 90,
-    padding: 26,
-    marginBottom: 30,
-    marginTop: 25,
+    backgroundColor: "transparent",
+    borderRadius: 110,
+    padding: 30,
     elevation: 8,
-    shadowColor: "#185a9d",
-    shadowOpacity: 0.13,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 15,
   },
-  image: {
-    width: width > 300 ? 170 : 130,
-    height: width > 400 ? 170 : 130,
+  iconBadge: {
+    position: "absolute",
+    bottom: -10,
+    right: 20,
+    backgroundColor: "#fff",
+    borderRadius: 30,
+    width: 60,
+    height: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: 10,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     color: "#fff",
-    fontWeight: "bold",
-    letterSpacing: 1,
-    marginBottom: 12,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    marginBottom: 16,
     textAlign: "center",
+    textShadowColor: "rgba(0,0,0,0.1)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   desc: {
-    color: "#e7f9f4",
-    fontSize: 15.2,
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 16,
     textAlign: "center",
-    marginBottom: 18,
-    lineHeight: 23,
+    marginBottom: 30,
+    lineHeight: 24,
+    paddingHorizontal: 30,
+    fontWeight: "400",
   },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 18,
-    marginTop: 7,
+    marginBottom: 25,
+    marginTop: 10,
   },
   dot: {
-    width: 11,
-    height: 11,
+    width: 12,
+    height: 12,
     borderRadius: 6,
-    backgroundColor: "#d2efe9",
-    marginHorizontal: 5,
+    backgroundColor: "rgba(255,255,255,0.4)",
+    marginHorizontal: 6,
   },
   activeDot: {
-    backgroundColor: "#43cea2",
-    borderWidth: 2,
-    borderColor: "#185a9d",
+    backgroundColor: "#fff",
+    width: 20,
+    borderRadius: 10,
   },
   nextBtn: {
-    width: width > 300 ? 220 : width * 0.9,
+    width: width > 300 ? 260 : width * 0.9,
     alignSelf: "center",
-    borderRadius: 20,
+    borderRadius: 30,
     overflow: "hidden",
-    marginTop: 15,
-    elevation: 5,
+    marginTop: 10,
+    elevation: 8,
     shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: 10,
   },
-
   btnGradient: {
     alignItems: "center",
-    borderRadius: 20,
-    paddingVertical: 16, // taller button
+    justifyContent: "center",
+    borderRadius: 30,
+    paddingVertical: 18,
+    flexDirection: "row",
   },
-
   nextText: {
     color: "#fff",
-    fontWeight: "bold",
-    fontSize: 20, // bigger font for better legibility
-    letterSpacing: 1,
+    fontWeight: "700",
+    fontSize: 18,
+    letterSpacing: 0.5,
   },
-
-  devBtn: {
-    marginVertical: 3,
-    backgroundColor: "#185a9d",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 22,
+  arrowIcon: {
+    marginLeft: 10,
   },
-  devBtnText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 15,
+  swipeHint: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    marginTop: 30,
+    fontStyle: "italic",
+  },
+  particle1: {
+    position: "absolute",
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    top: "10%",
+    left: "15%",
+  },
+  particle2: {
+    position: "absolute",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    top: "20%",
+    right: "20%",
+  },
+  particle3: {
+    position: "absolute",
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    bottom: "15%",
+    left: "25%",
   },
 });
